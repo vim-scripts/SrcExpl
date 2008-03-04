@@ -1,0 +1,67 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=2179
+
+[Introduction]
+
+The plugin (srcexpl.vim) is a source code explorer based on tags and it provides an overview of the function and type definitions.It has such a mechannism that works like the context window component of "Source Insight" software.
+
+If you have used Source Insight for browseing C/C++/Java project before, you may find that you can browse the definitions with the Source Explorer as well as the context window of "Source Insight".
+
+For example, you put the cursor on a function name in the Normal mode, its definition will show on the Source Explorer window a moment later. As soon as you do the 'double-click' operation using your mouse onto the Source Explorer window which had appeared on the bottom of (G)Vim, the definition and its context will be shown on the editor window.(Just like Source Insight does). Besides, multi-definitions' listing and jumping works like the Source Insight too. In srcexpl v1.2 and above, the function key which users mapped will play a important role that you can not only use mouse but also use keyboard in order to exploring source code in both GUI and cterm VIM.
+
+The Source Explorer can work with 'Taglist' and 'NERD tree' very well. Both of them make (G)Vim looks like the "Source Insight" in Unix/Windows/Mac enviroment.
+
+[Features]
+
+1\ Go insight the definitions of functions and various types of C/C++/Java language project, including function, marcos, structure, array, method, class, global variable, local variable etc.
+2\ Double click using left mouse and your own map key (such as: <ENTER>) onto the  Source Explorer window can go forward to the preview context.
+3\ Popup menu and Your own map key (such as <A-,> in Source Insight) to go back from the preview context.
+4\ Auto create and update the 'tags' file intelligently.
+
+[Tips]
+
+1\ Ensure that there is only one 'tags' file in your project PATH, or it would make VIM load all of them on the same time. For example: There are two tags file in the 'your_project' directory, so we will delete the excess 'tags' file in the 'sub_directory'.
+
+... ...
+
+[chewenlong@localhost ~]$ cd your_project/
+[chewenlong@localhost your_project]$ pwd
+/home/chewenlong/your_project
+[chewenlong@localhost your_project]$ ls
+bar.c  sub_directory  tags
+[chewenlong@localhost your_project]$ cd sub_directory/
+[chewenlong@localhost sub_directory]$ ls
+foo.c  tags
+[chewenlong@localhost sub_directory]$ rm -rf tags
+[chewenlong@localhost sub_directory]$ ls
+foo.c
+[chewenlong@localhost sub_directory]$ cd ..
+[chewenlong@localhost your_project]$ ls
+bar.c  sub_directory  tags
+[chewenlong@localhost your_project]$ vim bar.c
+
+... ...
+
+2\ Make sure the files you are exploring is unix-format, that is, there is no '\r'(displayed as '^M') at the end of each line. Because the plugin would make a jump mistake when executing EX-commands.
+
+3\ If you want your VIM works like the Source Insight, just try a VIM plugin named 'Trinity (trinity.vim)': 
+
+http://www.vim.org/scripts/script.php?script_id=2347
+
+This simple plugin can manage 'Source Explorer', 'Taglist' and 'NERD Tree' work together very well.
+
+If you want to use VIM with Source Explorer in the UNIXs-console, I suggest map the keys below to jump from one window to another:
+
+nmap <C-H> <C-W>h
+nmap <C-J> <C-W>j
+nmap <C-K> <C-W>k
+nmap <C-L> <C-W>l
+
+The typical actions using srcexpl.vim are: 
+
+a\ Move the cursor onto a symbol word.
+b\ As soon as the definition of the word is displayed on the preview window, we type <Ctrl-j> to jump into the previw window.
+c\ Type the SrcExpl_jumpKey(<ENTER> as default) to jump to the exact context of its definition.
+d\ Type the SrcExpl_gobackKey(<SPACE> as default) to go back to the previous position of the symbol word.
+
+There are some screenshots on the website: http://srcexpl.blogspot.com/
+
