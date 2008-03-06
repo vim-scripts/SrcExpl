@@ -1,11 +1,11 @@
 
-" File:         srcexpl.vim
+" File:         (G)Vim script file named srcexpl.vim
 " Description:  A (G)VIM Plugin for exploring the C/C++ 
 "               source code based on 'tags' and 'quickfix'.
 " Author:       Che Wenlong
 " Mail:         chewenlong@buaa.edu.cn
 " Copyright:    Copyright (C) 2008
-" Last Change:  2008 Feb 28
+" Last Change:  2008 Mar 06
 
 if exists("loaded_srcexpl")
     finish
@@ -14,16 +14,21 @@ let loaded_srcexpl = 1
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-" User interface for changing the 
-" height of the Source Explorer
-if !exists('g:SrcExpl_Height')
-    let g:SrcExpl_Height = 10
-endif
-
-" User interface for open and close
-" the Source Explorer
+" User interface to open and 
+" close the Source Explorer
 command! -nargs=0 -bar SrcExplToggle 
     \ call <SID>SrcExpl_Toggle()
+
+" User interface for changing the 
+" height of the Source Explorer
+if !exists('g:SrcExpl_WinHeight')
+    let g:SrcExpl_WinHeight = 10
+endif
+
+if !exists('g:SrcExpl_GoBackMapKey')
+    let g:SrcExpl_GoBackMapKey = ""
+endif
+
 " The key word symbol for exploring
 let s:SrcExpl_Symbol    =   ""
 " Whole file path being explored now
@@ -52,24 +57,45 @@ function! <SID>SrcExpl_WinPosAdapter()
     endif
 endfunction
 
+" Go Back from definition context.
+" User can map this function
+function! g:SrcExpl_GoBack()
+    " Can not do this operation in Source Explorer
+    if (!&previewwindow)
+        " Jump back to the privous place
+        exe "normal \<C-O>"
+    endif
+endfunction
+
 " Opreation when WinEnter Event happens
 function! <SID>SrcExpl_WinEnter()
     " In the Source Explorer
     if &previewwindow
-        " Do the mapping for 'double-click' and 'enter'
-        if maparg('<2-LeftMouse>', 'n') == ''
-            nnoremap <silent> <2-LeftMouse> :call <SID>SrcExpl_Jump()<CR>
+        if has("gui_running")
+            " Delet the SrcExplGoBack item in Popup menu
+            silent! nunmenu 1.01 PopUp.&SrcExplGoBack
+            " Do the mapping for 'double-click' and 'enter'
+            if maparg('<2-LeftMouse>', 'n') == ''
+                nnoremap <silent> <2-LeftMouse> 
+                    \ :call <SID>SrcExpl_Jump()<CR>
+            endif
         endif
         if maparg('<CR>', 'n') == ''
             nnoremap <silent> <CR> :call <SID>SrcExpl_Jump()<CR>
         endif
     " Other windows
     else
-        " Unmapping the exact mapping of 'double-click' and 'enter'
-        if maparg("<2-LeftMouse>", "n") == 
-            \ ":call <SNR>" . s:SrcExpl_ScriptID . 
-        \ "SrcExpl_Jump()<CR>"
-            nunmap <silent> <2-LeftMouse>
+        if has("gui_running")
+            " You can use SrcExplGoBack item in Popup menu
+            " to go back from the definition
+            silent! nnoremenu 1.01 PopUp.&SrcExplGoBack 
+                \ :call g:SrcExpl_GoBack()<CR>
+            " Unmapping the exact mapping of 'double-click' and 'enter'
+            if maparg("<2-LeftMouse>", "n") == 
+                    \ ":call <SNR>" . s:SrcExpl_ScriptID . 
+                \ "SrcExpl_Jump()<CR>"
+                nunmap <silent> <2-LeftMouse>
+            endif
         endif
         if maparg("<CR>", "n") == ":call <SNR>" . 
             \ s:SrcExpl_ScriptID . "SrcExpl_Jump()<CR>"
@@ -91,17 +117,18 @@ function! <SID>SrcExpl_Jump()
             return
         endif
     endif
-    " Back to the privious window
+    " Go back to the privious window
     silent! wincmd p
     " Indeed back to the editor window
     call <SID>SrcExpl_WinPosAdapter()
     " We got Multiple definitions
     if s:SrcExpl_Status == 2
-        " Use tag tool again to point to the definition according to user's
-        " choice manually
+        " Use tag tool again to point to the definition 
+        " according to user's choice manually
         exe "tag " . s:SrcExpl_Symbol
 	    call search("$", "b")
-	    let s:SrcExpl_Symbol = substitute(s:SrcExpl_Symbol, '\\', '\\\\', "")
+	    let s:SrcExpl_Symbol = substitute(s:SrcExpl_Symbol, 
+            \ '\\', '\\\\', "")
 	    call search('\<\V' . s:SrcExpl_Symbol . '\>')
         return
     endif
@@ -120,11 +147,14 @@ function! <SID>SrcExpl_MatchSymbol()
     endif
     " Match the symbol and make it highlight
 	call search("$", "b")
-	let s:SrcExpl_Symbol = substitute(s:SrcExpl_Symbol, '\\', '\\\\', "")
+	let s:SrcExpl_Symbol = substitute(s:SrcExpl_Symbol, 
+        \ '\\', '\\\\', "")
 	call search('\<\V' . s:SrcExpl_Symbol . '\>')
     hi SrcExpl_HighLight term=bold guifg=Black guibg=Magenta
-	exe 'match SrcExpl_HighLight "\%' . line(".") . 'l\%' . col(".") . 'c\k*"'
-    " Save the file path, the current line and the current col of the definition
+	exe 'match SrcExpl_HighLight "\%' . line(".") . 'l\%' . 
+        \ col(".") . 'c\k*"'
+    " Save the file path, the current line and the current 
+    " col of the definition
     let s:SrcExpl_FilePath = expand("%:p")
     let s:SrcExpl_CurrLine = line(".")
     let s:SrcExpl_CurrCol = col(".")
@@ -219,7 +249,7 @@ function! <SID>SrcExpl_Refresh()
             let s:SrcExpl_CurrLine = line(".")
             " Get the current colum before tag
             let s:SrcExpl_CurrCol = col(".")
-            " Back to the privious window
+            " Go back to the privious window
             silent! wincmd p
             " Indeed back to the editor window
             call <SID>SrcExpl_WinPosAdapter()
@@ -231,7 +261,7 @@ function! <SID>SrcExpl_Refresh()
         let s:SrcExpl_Status = 3
         " Tell the Source Explorer window wyh
         call <SID>SrcExpl_Report()
-        " Back to the privious window again
+        " Go back to the privious window again
         silent! wincmd p
         " Indeed back to the editor window
         call <SID>SrcExpl_WinPosAdapter()
@@ -252,7 +282,7 @@ function! <SID>SrcExpl_Refresh()
             " Make the definition hightlight
             call <SID>SrcExpl_MatchSymbol()
         endif
-        " Back to the privious window again
+        " Go back to the privious window again
         silent! wincmd p
         " Indeed back to the editor window
         call <SID>SrcExpl_WinPosAdapter()
@@ -262,12 +292,21 @@ endfunction
 
 " Unmap the mapping and unload the autocmd group
 function! <SID>SrcExpl_Cleanup()
-    " Make the 'double-click' and 'enter' for nothing
-    if maparg('<2-LeftMouse>', 'n') != ''
-        unmap <silent> <2-LeftMouse>
+    if has("gui_running")
+        " Delet the SrcExplGoBack item in Popup menu
+        silent! nunmenu 1.01 PopUp.&SrcExplGoBack
+        " Make the 'double-click' and 'enter' for nothing
+        if maparg('<2-LeftMouse>', 'n') != ''
+            unmap <silent> <2-LeftMouse>
+        endif
     endif
     if maparg('<CR>', 'n') != ''
         unmap <silent> <CR>
+    endif
+    " Unmap the user's key
+    if maparg(g:SrcExpl_GoBackMapKey, 'n') == 
+        \ ":call g:SrcExpl_GoBack()<CR>"
+        exe "unmap " . g:SrcExpl_GoBackMapKey
     endif
     " Unload the autocmd group
     silent! autocmd! SrcExpl_AutoCmd
@@ -275,9 +314,16 @@ endfunction
 
 " Get the plugin ID and load the autocmd group
 function! <SID>SrcExpl_Init()
+    " Map the user's key to go back from the 
+    " definition context.
+    if g:SrcExpl_GoBackMapKey != ""
+        exe "nnoremap " . g:SrcExpl_GoBackMapKey . 
+            \ " :call g:SrcExpl_GoBack()<CR>"
+    endif
     " First get the srcexpl.vim's ID
     map <SID>xx <SID>xx
-    let s:SrcExpl_ScriptID = substitute(maparg('<SID>xx'), '<SNR>\(\d\+_\)xx$', '\1', '')
+    let s:SrcExpl_ScriptID = substitute(maparg('<SID>xx'), 
+        \ '<SNR>\(\d\+_\)xx$', '\1', '')
     unmap <SID>xx
     " Then form an autocmd group
     augroup SrcExpl_AutoCmd
@@ -286,6 +332,7 @@ function! <SID>SrcExpl_Init()
         au! CursorHold * nested call <SID>SrcExpl_Refresh()
         au! WinEnter * nested call <SID>SrcExpl_WinEnter()
     augroup end
+
 endfunction
 
 " Close the Source Explorer window
@@ -306,7 +353,7 @@ endfunction
 " and set the buffer's proprity of the Source Explorer
 function! <SID>SrcExpl_OpenWin()
     " First set the height of preview window
-    exe "set previewheight=". string(g:SrcExpl_Height)
+    exe "set previewheight=". string(g:SrcExpl_WinHeight)
     " Open the Source Explorer window as the idle one
     exe "silent! " . "pedit " . s:SrcExpl_Title
     " Jump to the Source Explorer
@@ -318,13 +365,13 @@ function! <SID>SrcExpl_OpenWin()
         " No exact file
         setlocal buftype=nofile
         " Show the version of the Source Explorer
-        normal aSource Explorer V1.0
+        normal aSource Explorer V1.1
         " Make it no modifiable
         setlocal nomodifiable
         " Put it on the bottom of (G)Vim
         silent! wincmd J
     endif
-    " Back to the privious window
+    " Go back to the privious window
     silent! wincmd p
     " Indeed back to the editor window
     call <SID>SrcExpl_WinPosAdapter()
