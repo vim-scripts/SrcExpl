@@ -7,7 +7,7 @@
 " Author:       Che Wenlong
 " Mail:         chewenlong AT buaa.edu.cn
 " Copyright:    Copyright (C) 2008
-" Last Change:  2008 Mar 15
+" Last Change:  2008 Mar 23
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
@@ -34,6 +34,18 @@ endif
 
 let loaded_srcexpl = 1
 let s:save_cpo = &cpoptions
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+" Source Explorer Plugin version control
+
+if v:version < 700
+    " Tell users the reason
+    echohl WarningMsg | 
+        \ echo "You need VIM v7.0 or later for SrcExpl Plugin" 
+            \ | echohl None
+    finish
+endif
 
 set cpoptions&vim
 
@@ -71,14 +83,16 @@ endif
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
+" Version information for display
+let s:SrcExpl_VerInfo       =   "Source Explorer V2.1"
+" Buffer Title for buffer listing
+let s:SrcExpl_BufTitle      =   "__Source_Explorer__"
 " The whole path of 'tags' file
 let s:SrcExpl_TagsFilePath  =   ""
 " The key word symbol for exploring
 let s:SrcExpl_Symbol        =   ""
 " Whole file path being explored now
 let s:SrcExpl_FilePath      =   ""
-" Title of Source Explorer for display
-let s:SrcExpl_Title         =   "__Source_Explorer__"
 " ID number of srcexpl.vim
 let s:SrcExpl_ScriptID      =   0
 " Current line number of the key word symbol
@@ -98,13 +112,20 @@ let s:SrcExpl_Status        =   0
 "       in order to adapt the editor window position for
 "       the Source Explorer position.
 
-function! g:SrcExpl_WinPosAdapter()
-    " If the Taglist(I can't work without it!) Plugin existed
+function! g:SrcExpl_OtherPluginAdapter()
+    " If the Taglist Plugin existed
     if bufname("%") == "__Tag_List__"
-        " Move the cursor to its right window
+        " Move the cursor to its right window.
         " Because I used to put the taglist
         " Window on my left.
         silent! wincmd l
+    endif
+    " If the MiniBufExplorer Plugin existed
+    if bufname("%") == "-MiniBufExplorer-"
+        " Move the cursor to the window behind.
+        " Because I used to put the minibufexpl
+        " Window on the top position.
+        silent! wincmd j
     endif
 endfunction
 
@@ -138,7 +159,7 @@ function! g:SrcExpl_Refresh()
             " Go back to the privious window
             silent! wincmd p
             " Indeed back to the editor window
-            call g:SrcExpl_WinPosAdapter()
+            call g:SrcExpl_OtherPluginAdapter()
         endif
         " Begin to tag the symbol
         exe "silent " . "ptag " . s:SrcExpl_Symbol
@@ -150,7 +171,7 @@ function! g:SrcExpl_Refresh()
         " Go back to the privious window again
         silent! wincmd p
         " Indeed back to the editor window
-        call g:SrcExpl_WinPosAdapter()
+        call g:SrcExpl_OtherPluginAdapter()
         return
     endtry
     " Tag successfully and move to the preview window
@@ -172,7 +193,7 @@ function! g:SrcExpl_Refresh()
         " Go back to the privious window again
         silent! wincmd p
         " Indeed back to the editor window
-        call g:SrcExpl_WinPosAdapter()
+        call g:SrcExpl_OtherPluginAdapter()
     endif
 
 endfunction
@@ -260,12 +281,13 @@ endfunction!
 
 function! <SID>SrcExpl_SelectToJump()
 
-    " Get the item data that user selected
-    let l:list = getline(".")
-
     let l:i = 0
     let l:f = ""
     let l:s = ""
+
+    " Get the item data that user selected
+    let l:list = getline(".")
+
     " Traverse the prompt string until get the 
     " file path
     while !((l:list[l:i] == ']') && 
@@ -303,7 +325,7 @@ function! <SID>SrcExpl_SelectToJump()
     " Go back to the privious window
     silent! wincmd p
     " Indeed back to the editor window
-    call g:SrcExpl_WinPosAdapter()
+    call g:SrcExpl_OtherPluginAdapter()
     " Open the file of definition context
     if expand("%:p") != l:f
         exe "edit " . l:f
@@ -328,7 +350,7 @@ function! <SID>SrcExpl_Jump()
         return
     endif
     " Do we get the definition already?
-    if (bufname("%") == s:SrcExpl_Title)
+    if (bufname("%") == s:SrcExpl_BufTitle)
         if s:SrcExpl_Status == 3 " No definition
             return
         endif
@@ -341,7 +363,7 @@ function! <SID>SrcExpl_Jump()
     " Go back to the privious window
     silent! wincmd p
     " Indeed back to the editor window
-    call g:SrcExpl_WinPosAdapter()
+    call g:SrcExpl_OtherPluginAdapter()
 
     if s:SrcExpl_Status == 1
         " Open the buffer using editor
@@ -498,10 +520,11 @@ endfunction
 
 function! <SID>SrcExpl_DefNotFind()
     " Do the Source Explorer exsited already?
-    let l:bufnum = bufnr(s:SrcExpl_Title)
+    let l:bufnum = bufnr(s:SrcExpl_BufTitle)
+
     if l:bufnum == -1
         " Create a new buffer
-        let l:wcmd = s:SrcExpl_Title
+        let l:wcmd = s:SrcExpl_BufTitle
     else
         " Edit the existing buffer
         let l:wcmd = '+buffer' . l:bufnum
@@ -536,6 +559,7 @@ function! <SID>SrcExpl_GetSymbol()
     let l:cchar = getline('.')[col('.') - 1]
     " Change it to ASCII code
     let l:ascii = eval(char2nr(l:cchar))
+
     " Judge that if or not the charactor is invalid,
     " beause only 0-9, a-z, A-Z, and '_' are valid
     if (l:ascii >= 48 && l:ascii <= 57) || 
@@ -565,8 +589,7 @@ endfunction
 
 " Probe if or not there is a 'tags' file under the project PATH
 
-function! <SID>SrcExpl_AccessTags()
-    
+function! <SID>SrcExpl_AccessTags()    
     " Just save the CWD info
     let l:temp = ""
     
@@ -574,15 +597,14 @@ function! <SID>SrcExpl_AccessTags()
     while !filereadable("tags")
         " First save
         let l:temp = getcwd()
-        " Up to my parent director
+        " Up to my parent directory
         cd ..
         " Have been up to the system root dir
         if l:temp == getcwd()
             " So break out
             break
         endif
-    endwhile
-    
+    endwhile    
     " Indeed in the system root dir
     if l:temp == getcwd()
         " Clean the buffer
@@ -616,6 +638,7 @@ endfunction
 " Clean up the rubbish of plugin and free the mapping resouces
 
 function! <SID>SrcExpl_Cleanup()
+    " GUI Version
     if has("gui_running")
         " Delet the SrcExplGoBack item in Popup menu
         silent! nunmenu 1.01 PopUp.&SrcExplGoBack
@@ -646,12 +669,23 @@ endfunction
 " Initialize the Souce Explorer proprities
 
 function! <SID>SrcExpl_Initialize()
-
     " Access the Tags file 
     call <SID>SrcExpl_AccessTags()
-
-    " First set the height of preview window
-    exe "set previewheight=". string(g:SrcExpl_WinHeight)
+    " Found one Tags file
+    if s:SrcExpl_TagsFilePath != ""
+        " First set the height of preview window
+        exe "set previewheight=". string(g:SrcExpl_WinHeight)
+        " Load the Tags file into buffer
+        exe "silent! " . "pedit " . s:SrcExpl_TagsFilePath
+    else
+        " Can not find any tags file in the project path or its
+        " parent directory.
+        echohl ErrorMsg | 
+            \ echo "SrcExpl Plugin: There is no tags file in $PATH." 
+        \ | echohl None
+        " Quit
+        return -1
+    endif
     " Set the actual update time according to user's requestion
     " one second/times by default
     exe "set updatetime=" . string(g:SrcExpl_RefreshTime * 1000)
@@ -679,6 +713,8 @@ function! <SID>SrcExpl_Initialize()
         au! CursorHold * nested call g:SrcExpl_Refresh()
         au! WinEnter * nested call <SID>SrcExpl_WinEnter()
     augroup end
+    " Initialize successfully
+    return 0
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -690,10 +726,10 @@ function! <SID>SrcExpl_CloseWin()
     pclose
     " Judge if or not the Source Explorer
     " buffer had been deleted
-    let l:bufnum = bufnr(s:SrcExpl_Title)
+    let l:bufnum = bufnr(s:SrcExpl_BufTitle)
     " Existed indeed
     if l:bufnum != -1
-        exe "bdelete! " . s:SrcExpl_Title
+        exe "bdelete! " . s:SrcExpl_BufTitle
     endif
 endfunction
 
@@ -704,7 +740,7 @@ endfunction
 
 function! <SID>SrcExpl_OpenWin()
     " Open the Source Explorer window as the idle one
-    exe "silent! " . "pedit " . s:SrcExpl_Title
+    exe "silent! " . "pedit " . s:SrcExpl_BufTitle
     " Jump to the Source Explorer
     silent! wincmd P
     " Open successfully and jump to it indeed
@@ -713,8 +749,8 @@ function! <SID>SrcExpl_OpenWin()
         setlocal buflisted
         " No exact file
         setlocal buftype=nofile
-        " Show the version of the Source Explorer
-        normal aSource Explorer V1.1
+        " Display the version of the Source Explorer
+        exe "normal a" . s:SrcExpl_VerInfo
         " Make it no modifiable
         setlocal nomodifiable
         " Put it on the bottom of (G)Vim
@@ -723,7 +759,7 @@ function! <SID>SrcExpl_OpenWin()
     " Go back to the privious window
     silent! wincmd p
     " Indeed back to the editor window
-    call g:SrcExpl_WinPosAdapter()
+    call g:SrcExpl_OtherPluginAdapter()
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -733,19 +769,25 @@ endfunction
 
 function! <SID>SrcExpl_Toggle()
     " Closed
-    if s:SrcExpl_Switch == 0
-        let s:SrcExpl_Switch = 1
+    if s:SrcExpl_Switch == 0        
         " Initialize the proprities
-        call <SID>SrcExpl_Initialize()
-        " Open the window
+        let l:result = <SID>SrcExpl_Initialize()
+        " Initialize unsuccessfully
+        if l:result != 0
+            return
+        endif
+        " Create the window
         call <SID>SrcExpl_OpenWin()
+        " Set the switch flag on
+        let s:SrcExpl_Switch = 1
     " Opened
     else
+        " Set the switch flag off
+        let  s:SrcExpl_Switch = 0
         " Close the window
         call <SID>SrcExpl_CloseWin()
         " Do the cleaning work
         call <SID>SrcExpl_Cleanup()
-        let  s:SrcExpl_Switch = 0
     endif
 endfunction
 
