@@ -17,6 +17,8 @@
 " let g:SrcExpl_RefreshTime   = 1
 " // Set the window height of the Souce Explorer
 " let g:SrcExpl_WinHeight     = 9
+" // Let SrcExpl Plugin update the tags file when initializing
+" let g:SrcExpl_UpdateTags    = 1
 " // Set "Space" key do the refreshing operation
 " let g:SrcExpl_RefreshMapKey = "<Space>"
 " // Set "Ctrl-b" key go back from the definition context
@@ -69,6 +71,12 @@ if !exists('g:SrcExpl_RefreshTime')
     let g:SrcExpl_RefreshTime = 1
 endif
 
+" User interface for update tags
+" file when loading SrcExpl Plugin
+if !exists('g:SrcExpl_UpdateTags')
+    let g:SrcExpl_UpdateTags = 0
+endif
+
 " User interface for back from 
 " the definition context
 if !exists('g:SrcExpl_GoBackMapKey')
@@ -83,8 +91,6 @@ endif
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-" Version information for display
-let s:SrcExpl_VerInfo       =   "Source Explorer V2.1"
 " Buffer Title for buffer listing
 let s:SrcExpl_BufTitle      =   "__Source_Explorer__"
 " The whole path of 'tags' file
@@ -92,7 +98,9 @@ let s:SrcExpl_TagsFilePath  =   ""
 " The key word symbol for exploring
 let s:SrcExpl_Symbol        =   ""
 " Whole file path being explored now
-let s:SrcExpl_FilePath      =   ""
+let s:SrcExpl_EditFilePath  =   ""
+" Original work path when initilizing
+let s:SrcExpl_RawWorkPath   =   ""
 " ID number of srcexpl.vim
 let s:SrcExpl_ScriptID      =   0
 " Current line number of the key word symbol
@@ -151,7 +159,7 @@ function! g:SrcExpl_Refresh()
         silent! wincmd P
         if &previewwindow
             " Get the whole file path of the buffer before tag
-            let s:SrcExpl_FilePath = expand("%:p")
+            let s:SrcExpl_EditFilePath = expand("%:p")
             " Get the current line before tag
             let s:SrcExpl_CurrLine = line(".")
             " Get the current colum before tag
@@ -178,7 +186,7 @@ function! g:SrcExpl_Refresh()
     silent! wincmd P
     if &previewwindow
         " Judge that if or not point to the definition
-        if (s:SrcExpl_FilePath == expand("%:p")) &&
+        if (s:SrcExpl_EditFilePath == expand("%:p")) &&
             \ (s:SrcExpl_CurrLine == line(".")) &&
                 \ (s:SrcExpl_CurrCol == col("."))
             " Mulitple definitions
@@ -270,7 +278,7 @@ function! <SID>SrcExpl_MatchSymbol()
         \ col(".") . 'c\k*"'
     " Save the file path, the current line and the current 
     " col of the definition
-    let s:SrcExpl_FilePath = expand("%:p")
+    let s:SrcExpl_EditFilePath = expand("%:p")
     let s:SrcExpl_CurrLine = line(".")
     let s:SrcExpl_CurrCol = col(".")
 endfunction!
@@ -367,7 +375,7 @@ function! <SID>SrcExpl_Jump()
 
     if s:SrcExpl_Status == 1
         " Open the buffer using editor
-        exe "edit " . s:SrcExpl_FilePath
+        exe "edit " . s:SrcExpl_EditFilePath
         " Jump to the context line of that symbol
         call cursor(s:SrcExpl_CurrLine, s:SrcExpl_CurrCol)
     endif
@@ -587,12 +595,39 @@ endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
+" Get the word inputed by user on the command line window
+
+function! <SID>SrcExpl_GetInput(note)
+    " Be sure synchronize
+    call inputsave()
+    " Get the input content
+	let l:input = input(a:note)
+    " Save the content
+    call inputrestore()
+    " Tell SrcExpl
+    return l:input
+endfunction
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
 " Probe if or not there is a 'tags' file under the project PATH
 
 function! <SID>SrcExpl_AccessTags()    
-    " Just save the CWD info
+
+    let l:temp = getcwd()
+    " Get the raw work path
+    if l:temp != s:SrcExpl_RawWorkPath
+        " First load Source Explorer
+        if s:SrcExpl_RawWorkPath == ""
+            " Save that
+            let s:SrcExpl_RawWorkPath = l:temp
+        endif
+        " Go to the raw work path
+        exe "cd " . s:SrcExpl_RawWorkPath
+    endif
+
     let l:temp = ""
-    
+
     " Loop to probe the tags in CWD
     while !filereadable("tags")
         " First save
@@ -604,15 +639,15 @@ function! <SID>SrcExpl_AccessTags()
             " So break out
             break
         endif
-    endwhile    
+    endwhile
     " Indeed in the system root dir
     if l:temp == getcwd()
         " Clean the buffer
         let s:SrcExpl_TagsFilePath = ""
     " Have found a 'tags' file already
     else
-        " UNIXs OS
-        if has("unix")
+        " UNIXs OS or MAC OS-X
+        if has("unix") || has("macunix")
             if getcwd()[strlen(getcwd()) - 1] == '/'
                 let s:SrcExpl_TagsFilePath = 
                     \ getcwd() . "tags"
@@ -620,8 +655,8 @@ function! <SID>SrcExpl_AccessTags()
                 let s:SrcExpl_TagsFilePath = 
                     \ getcwd() . "/tags"
             endif
-        " WINDOWS
-        else
+        " WINDOWS 95/98/ME/NT/2000/XP
+        elseif has("win32")
             if getcwd()[strlen(getcwd()) - 1] == '\'
                 let s:SrcExpl_TagsFilePath = 
                     \ getcwd() . "tags"
@@ -629,6 +664,12 @@ function! <SID>SrcExpl_AccessTags()
                 let s:SrcExpl_TagsFilePath = 
                     \ getcwd() . "\\tags"
             endif
+        else
+            " Other operating system
+            echohl ErrorMsg | 
+                \ echo "SrcExpl Plugin: Not support on this OS." 
+            \ | echohl None
+
         endif
     endif
 endfunction
@@ -673,19 +714,52 @@ function! <SID>SrcExpl_Initialize()
     call <SID>SrcExpl_AccessTags()
     " Found one Tags file
     if s:SrcExpl_TagsFilePath != ""
-        " First set the height of preview window
-        exe "set previewheight=". string(g:SrcExpl_WinHeight)
-        " Load the Tags file into buffer
-        exe "silent! " . "pedit " . s:SrcExpl_TagsFilePath
+        " Compiled with 'Quickfix' feature
+        if !has("quickfix")
+            " Can not create preview window without quickfix feature
+            echohl ErrorMsg | 
+                \ echo "SrcExpl: You should compile VIM with 'Quickfix'." 
+            \ | echohl None
+            return -1
+        endif
+        " Have found 'tags' file and update that
+        if g:SrcExpl_UpdateTags == 1
+            " Call the external 'ctags' program
+            silent !ctags -R *
+        endif
     else
-        " Can not find any tags file in the project path or its
-        " parent directory.
-        echohl ErrorMsg | 
-            \ echo "SrcExpl Plugin: There is no tags file in $PATH." 
+        " Ask user if or not want to create a tags file
+        echohl Question |
+            \ let l:answer = <SID>SrcExpl_GetInput("SrcExpl: "
+                \ . "'tags' file isn't found in your PATHs.\n"
+            \ . "Create one in the current directory? (y or n)")
         \ | echohl None
-        " Quit
-        return -1
+        " They do
+        if l:answer == "y" || l:answer == "yes"
+            " Back from the root directory
+            exe "cd " . s:SrcExpl_RawWorkPath
+            " Call the external 'ctags' program
+            silent !ctags -R *
+            " Rejudge the tags file if existed
+            call <SID>SrcExpl_AccessTags()
+            " Maybe there is no 'ctags' program in user's system
+            if s:SrcExpl_TagsFilePath == ""
+                " Tell them what happened
+                echohl ErrorMsg | 
+                    \ echo "SrcExpl: Execute 'ctags' program failed."
+                \ | echohl None
+                return -2
+            endif
+        else
+            " They don't
+            echo ""
+            return -3
+        endif
     endif
+    " First set the height of preview window
+    exe "set previewheight=". string(g:SrcExpl_WinHeight)
+    " Load the Tags file into buffer
+    exe "silent! " . "pedit " . s:SrcExpl_TagsFilePath
     " Set the actual update time according to user's requestion
     " one second/times by default
     exe "set updatetime=" . string(g:SrcExpl_RefreshTime * 1000)
@@ -750,7 +824,7 @@ function! <SID>SrcExpl_OpenWin()
         " No exact file
         setlocal buftype=nofile
         " Display the version of the Source Explorer
-        exe "normal a" . s:SrcExpl_VerInfo
+        exe "normal a" . "Source Explorer V2.2"
         " Make it no modifiable
         setlocal nomodifiable
         " Put it on the bottom of (G)Vim
@@ -769,11 +843,12 @@ endfunction
 
 function! <SID>SrcExpl_Toggle()
     " Closed
-    if s:SrcExpl_Switch == 0        
+    if s:SrcExpl_Switch == 0
         " Initialize the proprities
         let l:result = <SID>SrcExpl_Initialize()
         " Initialize unsuccessfully
         if l:result != 0
+            " Quit
             return
         endif
         " Create the window
