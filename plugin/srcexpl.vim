@@ -6,8 +6,9 @@
 "               source code based on 'tags' and 'quickfix'.
 " Author:       Che Wenlong
 " Mail:         chewenlong AT buaa.edu.cn
+" License:      This file is placed in the public domain.
 " Copyright:    Copyright (C) 2008
-" Last Change:  2008 Mar 23
+" Last Change:  2008 April 5
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
@@ -146,6 +147,14 @@ function! g:SrcExpl_Refresh()
     if &previewwindow
         return
     endif
+	" Avoid errors of multi-buffers
+	if &modified
+		" Tell the user what has happened
+        echohl ErrorMsg | 
+            \ echo "SrcExpl: The current file was not saved."
+        \ | echohl None
+		return
+	endif
     " Get the symbol under the cursor
     let l:result = <SID>SrcExpl_GetSymbol()
     " The symbol is invalid
@@ -203,7 +212,6 @@ function! g:SrcExpl_Refresh()
         " Indeed back to the editor window
         call g:SrcExpl_OtherPluginAdapter()
     endif
-
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -421,11 +429,11 @@ function! <SID>SrcExpl_ListMultiDefs(path, list)
             let l:i += 1
             " Use the whole file path
             let l:f = a:path
-            " UNIXs OS
-            if has("unix")
+            " UNIXs OS or MAC OS-X
+            if has("unix") || has("macunix")
                 let l:f = l:f . '/'
-            " Windows
-            else
+            " WINDOWS 95/98/ME/NT/2000/XP
+            elseif has("win32")
                 let l:f = l:f . '\'
             endif
             " Secondly, store the whole file path
@@ -544,8 +552,6 @@ function! <SID>SrcExpl_DefNotFind()
     if &previewwindow
         " First make it modifiable
         setlocal modifiable
-        " Just delete all content
-        "silent! %delete _
         setlocal buflisted
         setlocal buftype=nofile
         " Report the reason why Source Explorer
@@ -718,7 +724,7 @@ function! <SID>SrcExpl_Initialize()
         if !has("quickfix")
             " Can not create preview window without quickfix feature
             echohl ErrorMsg | 
-                \ echo "SrcExpl: You should compile VIM with 'Quickfix'." 
+                \ echo "SrcExpl: Not support without 'Quickfix'." 
             \ | echohl None
             return -1
         endif
@@ -824,7 +830,7 @@ function! <SID>SrcExpl_OpenWin()
         " No exact file
         setlocal buftype=nofile
         " Display the version of the Source Explorer
-        exe "normal a" . "Source Explorer V2.2"
+        exe "normal a" . "Source Explorer V2.3"
         " Make it no modifiable
         setlocal nomodifiable
         " Put it on the bottom of (G)Vim
