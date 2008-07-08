@@ -1,37 +1,38 @@
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-" File:         (G)Vim script file named srcexpl.vim
-" Description:  A (G)VIM Plugin for exploring the C/C++ 
-"               source code based on 'tags' and 'quickfix'.
-" Author:       Che Wenlong
-" Mail:         chewenlong AT buaa.edu.cn
-" License:      This file is placed in the public domain.
-" Copyright:    Copyright (C) 2008
-" Last Change:  2008 April 5
+" File Name:	srcexpl.vim
+" Abstract:		A (G)VIM plugin for exploring the C/C++ 
+"				source code based on 'tags' and 'quickfix'.
+" Author:		Wenlong Che
+" EMail:		chewenlong @ buaa.edu.cn
+" Version:		2.4
+" Last Change:	July 8, 2008
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 " The_setting_example_in_my_vimrc_file:-)
 
-" // Set one second time for refreshing
-" let g:SrcExpl_RefreshTime   = 1
-" // Set the window height of the Souce Explorer
+" // Set 300 ms for refreshing the the Source Explorer
+" let g:SrcExpl_RefreshTime   = 300
+" // Set the window height of the Source Explorer
 " let g:SrcExpl_WinHeight     = 9
-" // Let SrcExpl Plugin update the tags file when initializing
+" // Let the Source Explorer update the tags file when initializing
 " let g:SrcExpl_UpdateTags    = 1
-" // Set "Space" key do the refreshing operation
+" // Set "Space" key for refresh the Source Explorer manually
 " let g:SrcExpl_RefreshMapKey = "<Space>"
-" // Set "Ctrl-b" key go back from the definition context
+" // Set "Ctrl-b" key for back from the definition context
 " let g:SrcExpl_GoBackMapKey  = "<C-b>"
-" // The switch of Source Explorer plugin
+" // The switch of the Source Explorer
 " nmap <F8> :SrcExplToggle<CR>
 
 " Just_change_above_of_them_by_yourself:-)
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-if exists("loaded_srcexpl")
+" Avoid reloading the plugin again
+
+if exists('loaded_srcexpl')
     finish
 endif
 
@@ -69,7 +70,7 @@ endif
 " User interface for setting the 
 " update time interval of each refreshing
 if !exists('g:SrcExpl_RefreshTime')
-    let g:SrcExpl_RefreshTime = 1
+    let g:SrcExpl_RefreshTime = 500
 endif
 
 " User interface for update tags
@@ -81,27 +82,27 @@ endif
 " User interface for back from 
 " the definition context
 if !exists('g:SrcExpl_GoBackMapKey')
-    let g:SrcExpl_GoBackMapKey = ""
+    let g:SrcExpl_GoBackMapKey = ''
 endif
 
 " User interface for refreshing one
 " definition searching manually
 if !exists('g:SrcExpl_RefreshMapKey')
-    let g:SrcExpl_RefreshMapKey = ""
+    let g:SrcExpl_RefreshMapKey = ''
 endif
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 " Buffer Title for buffer listing
-let s:SrcExpl_BufTitle      =   "__Source_Explorer__"
+let s:SrcExpl_BufTitle      =   '__Source_Explorer__'
 " The whole path of 'tags' file
-let s:SrcExpl_TagsFilePath  =   ""
+let s:SrcExpl_TagsFilePath  =   ''
 " The key word symbol for exploring
-let s:SrcExpl_Symbol        =   ""
+let s:SrcExpl_Symbol        =   ''
 " Whole file path being explored now
-let s:SrcExpl_EditFilePath  =   ""
+let s:SrcExpl_EditFilePath  =   ''
 " Original work path when initilizing
-let s:SrcExpl_RawWorkPath   =   ""
+let s:SrcExpl_RawWorkPath   =   ''
 " ID number of srcexpl.vim
 let s:SrcExpl_ScriptID      =   0
 " Current line number of the key word symbol
@@ -111,8 +112,9 @@ let s:SrcExpl_CurrCol       =   0
 " Source Explorer switch flag
 let s:SrcExpl_Switch        =   0
 " Source Explorer status:
-" 1: exploring, 2: no definition
-" 3: multi-definitions
+" 1: Sigle-definition
+" 2: Multi-definitions 
+" 3: No such definition
 let s:SrcExpl_Status        =   0
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -122,6 +124,7 @@ let s:SrcExpl_Status        =   0
 "       the Source Explorer position.
 
 function! g:SrcExpl_OtherPluginAdapter()
+
     " If the Taglist Plugin existed
     if bufname("%") == "__Tag_List__"
         " Move the cursor to its right window.
@@ -136,6 +139,7 @@ function! g:SrcExpl_OtherPluginAdapter()
         " Window on the top position.
         silent! wincmd j
     endif
+
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -143,7 +147,11 @@ endfunction
 " Refresh the Source Explorer window and update the status
 
 function! g:SrcExpl_Refresh()
-    " Only Source Explorer window is valid 
+
+	let l:exp = ''
+	let l:rtn = 0
+
+	" Only Source Explorer window is valid 
     if &previewwindow
         return
     endif
@@ -156,11 +164,13 @@ function! g:SrcExpl_Refresh()
 		return
 	endif
     " Get the symbol under the cursor
-    let l:result = <SID>SrcExpl_GetSymbol()
+    let l:rtn = <SID>SrcExpl_GetSymbol()
     " The symbol is invalid
-    if l:result != 0
+    if l:rtn != 0
         return
     endif
+	let l:exp = '\C\<' . s:SrcExpl_Symbol . '\>'
+
     " Explore the source code using tag tool
     " First Just try to get the definition of the symbol
     try
@@ -179,17 +189,17 @@ function! g:SrcExpl_Refresh()
             call g:SrcExpl_OtherPluginAdapter()
         endif
         " Begin to tag the symbol
-        exe "silent " . "ptag " . s:SrcExpl_Symbol
+        exe 'silent ' . 'ptag /' . l:exp
     catch
-        " Tag unsuccessfully
-        let s:SrcExpl_Status = 3
-        " Tell the Source Explorer window wyh
-        call <SID>SrcExpl_DefNotFind()
-        " Go back to the privious window again
-        silent! wincmd p
-        " Indeed back to the editor window
-        call g:SrcExpl_OtherPluginAdapter()
-        return
+		" Tag failed
+		let s:SrcExpl_Status = 3
+		" Tell the Source Explorer window
+		call <SID>SrcExpl_NoDef()
+		" Go back to the privious window again
+		silent! wincmd p
+		" Indeed back to the editor window
+		call g:SrcExpl_OtherPluginAdapter()
+		return
     endtry
     " Tag successfully and move to the preview window
     silent! wincmd P
@@ -199,19 +209,20 @@ function! g:SrcExpl_Refresh()
             \ (s:SrcExpl_CurrLine == line(".")) &&
                 \ (s:SrcExpl_CurrCol == col("."))
             " Mulitple definitions
-            let s:SrcExpl_Status = 2
+            let s:SrcExpl_Status = 2 
             " List the multi-definitions in the Source Explorer
-            call <SID>SrcExpl_FindMultiDefs()
+            call <SID>SrcExpl_ListTags(l:exp)
         else " Source Explorer Has pointed to the definition already
             let s:SrcExpl_Status = 1
             " Make the definition hightlight
-            call <SID>SrcExpl_MatchSymbol()
+            call <SID>SrcExpl_MatchExpr()
         endif
         " Go back to the privious window again
         silent! wincmd p
         " Indeed back to the editor window
         call g:SrcExpl_OtherPluginAdapter()
     endif
+
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -220,18 +231,21 @@ endfunction
 " Users can call this function using their mapping key.
 
 function! g:SrcExpl_GoBack()
+
     " Can not do this operation in Source Explorer
     if (!&previewwindow)
         " Jump back to the privous place
         exe "normal \<C-O>"
     endif
+
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 " Opreation when WinEnter Event happens
 
-function! <SID>SrcExpl_WinEnter()
+function! <SID>SrcExpl_EnterWin()
+
     " In the Source Explorer
     if &previewwindow
         if has("gui_running")
@@ -265,13 +279,15 @@ function! <SID>SrcExpl_WinEnter()
             nunmap <silent> <CR>
         endif
     endif
+
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 " Highlight the Symbol of definition
 
-function! <SID>SrcExpl_MatchSymbol()
+function! <SID>SrcExpl_MatchExpr()
+
     " First open the folding if exists
     if has("folding")
         silent! .foldopen
@@ -280,8 +296,10 @@ function! <SID>SrcExpl_MatchSymbol()
 	call search("$", "b")
 	let s:SrcExpl_Symbol = substitute(s:SrcExpl_Symbol, 
         \ '\\', '\\\\', "")
-	call search('\<\V' . s:SrcExpl_Symbol . '\>')
-    hi SrcExpl_HighLight term=bold guifg=Black guibg=Magenta
+	call search('\C\<\V' . s:SrcExpl_Symbol . '\>')
+	" Set the highlight color
+    hi SrcExpl_HighLight term=bold guifg=Black guibg=Magenta ctermfg=Black ctermbg=Magenta
+	" Highlight
 	exe 'match SrcExpl_HighLight "\%' . line(".") . 'l\%' . 
         \ col(".") . 'c\k*"'
     " Save the file path, the current line and the current 
@@ -289,13 +307,14 @@ function! <SID>SrcExpl_MatchSymbol()
     let s:SrcExpl_EditFilePath = expand("%:p")
     let s:SrcExpl_CurrLine = line(".")
     let s:SrcExpl_CurrCol = col(".")
+
 endfunction!
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 " Select one of multi-definitions, and jump to there.
 
-function! <SID>SrcExpl_SelectToJump()
+function! <SID>SrcExpl_SelToJump()
 
     let l:i = 0
     let l:f = ""
@@ -329,10 +348,14 @@ function! <SID>SrcExpl_SelectToJump()
     let l:i += 3
     " Get the EX symbol in order to jump
     while l:list[l:i] != ''
-        " If the '*' in the function definition,
+        " If the '*', '[' and ']' in the function definition,
         " then we add the '\' in front of it.
-        if (l:list[l:i] == '*') && (l:list[l:i - 1] != '\')
+        if (l:list[l:i] == '*')
             let l:s = l:s . '\' . '*'
+		elseif (l:list[l:i] == '[')
+            let l:s = l:s . '\' . '['
+		elseif (l:list[l:i] == ']')
+            let l:s = l:s . '\' . ']'
         else
             let l:s = l:s . l:list[l:i]
         endif
@@ -343,16 +366,18 @@ function! <SID>SrcExpl_SelectToJump()
     " Indeed back to the editor window
     call g:SrcExpl_OtherPluginAdapter()
     " Open the file of definition context
-    if expand("%:p") != l:f
-        exe "edit " . l:f
-    endif
+    exe "edit " . s:SrcExpl_TagsFilePath . l:f
     " Use EX Pattern to Jump to the exact line of the definition
     silent! exe l:s
+	if has("folding")
+		silent! .foldopen
+	endif
     " Match the symbol word under the cursor
 	call search("$", "b")
 	let s:SrcExpl_Symbol = substitute(s:SrcExpl_Symbol, 
         \ '\\', '\\\\', "")
-	call search('\<\V' . s:SrcExpl_Symbol . '\>')
+	call search('\V\<' . s:SrcExpl_Symbol . '\>')
+
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -360,6 +385,7 @@ endfunction
 " Jump to the editor window and point to the definition
 
 function! <SID>SrcExpl_Jump()
+
     " Only do the operation on the Source Explorer 
     " window is valid
     if !&previewwindow
@@ -371,170 +397,32 @@ function! <SID>SrcExpl_Jump()
             return
         endif
     endif
-   " We got Multiple definitions
+   " We got multiple definitions
     if s:SrcExpl_Status == 2
-        call <SID>SrcExpl_SelectToJump()
+        call <SID>SrcExpl_SelToJump()
         return
     endif
     " Go back to the privious window
     silent! wincmd p
     " Indeed back to the editor window
     call g:SrcExpl_OtherPluginAdapter()
-
+	" We got only one definition
     if s:SrcExpl_Status == 1
         " Open the buffer using editor
         exe "edit " . s:SrcExpl_EditFilePath
         " Jump to the context line of that symbol
         call cursor(s:SrcExpl_CurrLine, s:SrcExpl_CurrCol)
+		if has("folding")
+			silent! .foldopen
+		endif
     endif
+
 endfunction
-
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-" List the multi-definitions of symbol under the cursor onto
-" the Source Explorer window.
-
-function! <SID>SrcExpl_ListMultiDefs(path, list)
-
-    let l:bufnum = bufnr("__Source_Explorer__")
-
-    if l:bufnum == -1
-        " Create a new buffer
-        let l:wcmd = "__Source_Explorer__"
-    else
-        " Edit the existing buffer
-        let l:wcmd = '+buffer' . l:bufnum
-    endif
-    " Reopen the Source Explorer idle window
-    exe "silent! " . "pedit " . l:wcmd
-
-    silent! wincmd P
-
-    if &previewwindow
-        " Reset the proprity of the Source Explorer
-        setlocal modifiable
-        setlocal buflisted
-        setlocal buftype=nofile
-        " Set the loop flag
-        let l:i  = 0
-        let l:f = ""
-        let l:s = ""
-        " Parse each pattern line data in the tags file
-        while a:list[l:i] != ''
-            " Firstly, get the file path start point
-            while a:list[l:i] != nr2char(9)
-                let l:i += 1
-            endwhile
-            " Got it
-            let l:i += 1
-            " Use the whole file path
-            let l:f = a:path
-            " UNIXs OS or MAC OS-X
-            if has("unix") || has("macunix")
-                let l:f = l:f . '/'
-            " WINDOWS 95/98/ME/NT/2000/XP
-            elseif has("win32")
-                let l:f = l:f . '\'
-            endif
-            " Secondly, store the whole file path
-            while a:list[l:i] != nr2char(9)
-                let l:f = l:f . a:list[l:i]
-                let l:i += 1
-            endwhile
-            " Done
-            let l:i += 1
-            " Thirdly, Store the Ex symbol
-            while !((a:list[l:i] == ';') && 
-                \ (a:list[l:i + 1] == '"'))
-                let l:s = l:s . a:list[l:i]
-                let l:i += 1
-            endwhile
-            " Done
-            let l:i += 2
-            " Prepare to parse the next match line data
-            while !((a:list[l:i] == '!') && 
-                \ (a:list[l:i + 1] == '@') &&
-            \ (a:list[l:i + 2] == '#') && 
-                \ (a:list[l:i + 3] == '$'))
-                let l:i += 1
-            endwhile
-            " List the previous line data on the Source 
-            " Explorer Window.
-            exe "normal a" . "[File Path]: " . l:f . " " . 
-                \ "[EX Pattern]: " . l:s
-            " Clean the buffers
-            let l:f = ""
-            let l:s = ""
-            " Next line
-            let l:i += 4
-            exe "normal o"
-        endwhile
-    endif
-    " Remove the last line
-    exe "normal dd"
-    " Back to the first line
-    exe "normal gg"
-    setlocal nomodifiable
-endfunction
-
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-" Find the multi-definitions in Tags file and show them on the
-" Source Explorer Window.
-
-function! <SID>SrcExpl_FindMultiDefs()
-
-    let l:tags = ""
-    let l:line = 0
-    
-    " The tags file must be available, or quit.
-    if (s:SrcExpl_TagsFilePath == "") ||
-        \ (!filereadable(s:SrcExpl_TagsFilePath))
-        let s:SrcExpl_Status = 3
-        call <SID>SrcExpl_DefNotFind()
-        return
-    endif
-    " Set the searche pattern in Tags file.
-    let l:symbol = '^\<' . s:SrcExpl_Symbol . '\>'
-    " Get the buffer of the Tags file
-    let l:bufnum = bufnr(s:SrcExpl_TagsFilePath)
-
-    if l:bufnum == -1
-        " Create a new buffer
-        let l:wcmd = s:SrcExpl_TagsFilePath
-    else
-    " Edit the existing buffer
-        let l:wcmd = '+buffer' . l:bufnum
-    endif
-    " Open the tags file window
-    exe "silent! " . "pedit " . l:wcmd
-
-    silent! wincmd P
-        
-    if &previewwindow
-        " Loop to get all symbol lines in Tags file.
-        while 1
-            " Search the whole Tags file up to down
-            let l:line = search(l:symbol, 'W')
-            " Search one symbol line
-            if l:line != 0
-                " Set my private flag '!@#$' to separate
-                " one symbol line from another
-                let l:tags = l:tags . getline(".") . "!@#$"
-            else
-                " Search work is done, then list them.
-                call <SID>SrcExpl_ListMultiDefs(getcwd(), l:tags)
-                return
-            endif
-        endwhile
-    endif
-endfunction
-
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 " Report to the Source Explorer what happens
 
-function! <SID>SrcExpl_DefNotFind()
+function! <SID>SrcExpl_NoDef()
+
     " Do the Source Explorer exsited already?
     let l:bufnum = bufnr(s:SrcExpl_BufTitle)
 
@@ -546,7 +434,7 @@ function! <SID>SrcExpl_DefNotFind()
         let l:wcmd = '+buffer' . l:bufnum
     endif
     " Reopen the Source Explorer idle window
-    exe "silent! " . "pedit " . l:wcmd
+    exe 'silent! ' . 'pedit ' . l:wcmd
     " Move to it
     silent! wincmd P
     if &previewwindow
@@ -557,11 +445,80 @@ function! <SID>SrcExpl_DefNotFind()
         " Report the reason why Source Explorer
         " can not point to the definition
         if s:SrcExpl_Status == 3
-            normal aDefinition Not Found
+			" Delete all lines in buffer.
+			1,$d _
+			" Goto the end of the buffer put the buffer list
+			$
+			" Display the version of the Source Explorer
+			put! ='Definition Not Found'
+			" Delete the extra trailing blank line
+			$ d _
         endif
         " Make it unmodifiable again
         setlocal nomodifiable
     endif
+
+endfunction
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+" Traversal the tags infomation from the tags file and list them
+
+function! <SID>SrcExpl_ListTags(exp)
+
+	" The tags file must be available, or quit.
+    if s:SrcExpl_TagsFilePath == ""
+        let s:SrcExpl_Status = 3
+        call <SID>SrcExpl_NoDef()
+        return
+    endif
+
+	let l:bufnum = bufnr("__Source_Explorer__")
+    if l:bufnum == -1
+        " Create a new buffer
+        let l:wcmd = "__Source_Explorer__"
+    else
+        " Edit the existing buffer
+        let l:wcmd = '+buffer' . l:bufnum
+    endif
+    " Reopen the Source Explorer idle window
+    exe "silent! " . "pedit " . l:wcmd
+	" Return to the preview window
+    silent! wincmd P
+	" Done
+	if &previewwindow
+        " Reset the proprity of the Source Explorer
+        setlocal modifiable
+        setlocal buflisted
+        setlocal buftype=nofile
+		" Delete all lines in buffer
+		1,$d _
+		" Get the tags dictionary array
+		let l:list = taglist(a:exp)
+		let l:indx = 0
+		" Loop for listing each tag from tags file
+		while 1
+			" First get each tag list
+			let l:dict = get(l:list, l:indx, {})
+			" There is one tag
+			if l:dict != {}
+				" Goto the end of the buffer put the buffer list
+				$
+				put! ='[File Path]: '. l:dict['filename']
+					\ . ' ' . '[EX Pattern]: ' . l:dict['cmd']
+			else " Traversal finished
+				break
+			endif
+			let l:indx += 1
+		endwhile
+	endif
+	" Delete the extra trailing blank line
+	$ d _
+	" Move the cursor to the top of the Source Explorer window
+	exe "normal! gg"
+    " Back to the first line
+    setlocal nomodifiable
+
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -569,6 +526,7 @@ endfunction
 " Get key word symbol under the current cursor
 
 function! <SID>SrcExpl_GetSymbol()
+
     " Get the current charactor under the cursor
     let l:cchar = getline('.')[col('.') - 1]
     " Change it to ASCII code
@@ -580,9 +538,9 @@ function! <SID>SrcExpl_GetSymbol()
             \ (l:ascii >= 65 && l:ascii <= 90) ||
         \ (l:ascii >= 97 && l:ascii <= 122) ||
                 \ (l:ascii == 95) 
-        " The key word symbol has been explored
-        " just now, so should not explore that again
-        if s:SrcExpl_Symbol == expand("<cword>")
+        " if the key word symbol has been explored
+        " just now, we will not explore that again
+        if s:SrcExpl_Symbol ==# expand("<cword>")
             return -1
         " Get a new key word symbol
         else
@@ -590,13 +548,14 @@ function! <SID>SrcExpl_GetSymbol()
         endif
     " Invalid charactor
     else
-        if s:SrcExpl_Symbol == ""
+        if s:SrcExpl_Symbol == ''
             return -1 " Second, third ...
         else " First
-            let s:SrcExpl_Symbol = ""
+            let s:SrcExpl_Symbol = ''
         endif
     endif
     return 0
+
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -604,6 +563,7 @@ endfunction
 " Get the word inputed by user on the command line window
 
 function! <SID>SrcExpl_GetInput(note)
+
     " Be sure synchronize
     call inputsave()
     " Get the input content
@@ -612,79 +572,130 @@ function! <SID>SrcExpl_GetInput(note)
     call inputrestore()
     " Tell SrcExpl
     return l:input
+
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 " Probe if or not there is a 'tags' file under the project PATH
 
-function! <SID>SrcExpl_AccessTags()    
+function! <SID>SrcExpl_ProbeTags()    
 
-    let l:temp = getcwd()
+    let l:tmp = getcwd()
     " Get the raw work path
-    if l:temp != s:SrcExpl_RawWorkPath
+    if l:tmp != s:SrcExpl_RawWorkPath
         " First load Source Explorer
         if s:SrcExpl_RawWorkPath == ""
             " Save that
-            let s:SrcExpl_RawWorkPath = l:temp
+            let s:SrcExpl_RawWorkPath = l:tmp
         endif
         " Go to the raw work path
         exe "cd " . s:SrcExpl_RawWorkPath
     endif
 
-    let l:temp = ""
+    let l:tmp = ""
 
     " Loop to probe the tags in CWD
     while !filereadable("tags")
         " First save
-        let l:temp = getcwd()
+        let l:tmp = getcwd()
         " Up to my parent directory
         cd ..
         " Have been up to the system root dir
-        if l:temp == getcwd()
+        if l:tmp == getcwd()
             " So break out
             break
         endif
     endwhile
     " Indeed in the system root dir
-    if l:temp == getcwd()
+    if l:tmp == getcwd()
         " Clean the buffer
         let s:SrcExpl_TagsFilePath = ""
     " Have found a 'tags' file already
     else
         " UNIXs OS or MAC OS-X
         if has("unix") || has("macunix")
-            if getcwd()[strlen(getcwd()) - 1] == '/'
+            if getcwd()[strlen(getcwd()) - 1] != '/'
                 let s:SrcExpl_TagsFilePath = 
-                    \ getcwd() . "tags"
-            else
-                let s:SrcExpl_TagsFilePath = 
-                    \ getcwd() . "/tags"
+                    \ getcwd() . '/'
             endif
         " WINDOWS 95/98/ME/NT/2000/XP
         elseif has("win32")
-            if getcwd()[strlen(getcwd()) - 1] == '\'
+            if getcwd()[strlen(getcwd()) - 1] != '\'
                 let s:SrcExpl_TagsFilePath = 
-                    \ getcwd() . "tags"
-            else
-                let s:SrcExpl_TagsFilePath = 
-                    \ getcwd() . "\\tags"
+                    \ getcwd() . '\'
             endif
         else
             " Other operating system
             echohl ErrorMsg | 
                 \ echo "SrcExpl Plugin: Not support on this OS." 
             \ | echohl None
-
         endif
     endif
+
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-" Clean up the rubbish of plugin and free the mapping resouces
+" Close the Source Explorer window and delete its buffer
+
+function! <SID>SrcExpl_CloseWin()
+
+    " Just close the preview window
+    pclose
+    " Judge if or not the Source Explorer
+    " buffer had been deleted
+    let l:bufnum = bufnr(s:SrcExpl_BufTitle)
+    " Existed indeed
+    if l:bufnum != -1
+        exe "bdelete! " . s:SrcExpl_BufTitle
+    endif
+
+endfunction
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+" Open the Source Explorer window under the bottom of (G)Vim,
+" and set the buffer's proprity of the Source Explorer
+
+function! <SID>SrcExpl_OpenWin()
+
+    " Open the Source Explorer window as the idle one
+    exe "silent! " . "pedit " . s:SrcExpl_BufTitle
+    " Jump to the Source Explorer
+    silent! wincmd P
+    " Open successfully and jump to it indeed
+    if &previewwindow
+        " Show its name on the buffer list
+        setlocal buflisted
+        " No exact file
+        setlocal buftype=nofile
+		" Delete all lines in buffer
+		1,$d _
+		" Goto the end of the buffer
+		$
+		" Display the version of the Source Explorer
+		put! ='Source Explorer V2.4'
+		" Delete the extra trailing blank line
+		$ d _
+        " Make it no modifiable
+        setlocal nomodifiable
+        " Put it on the bottom of (G)Vim
+        silent! wincmd J
+    endif
+    " Go back to the privious window
+    silent! wincmd p
+    " Indeed back to the editor window
+    call g:SrcExpl_OtherPluginAdapter()
+
+endfunction
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+" Clean up the rubbish and free the mapping resouces
 
 function! <SID>SrcExpl_Cleanup()
+
     " GUI Version
     if has("gui_running")
         " Delet the SrcExplGoBack item in Popup menu
@@ -709,15 +720,17 @@ function! <SID>SrcExpl_Cleanup()
     endif
     " Unload the autocmd group
     silent! autocmd! SrcExpl_AutoCmd
+
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-" Initialize the Souce Explorer proprities
+" Initialize the Source Explorer proprities
 
-function! <SID>SrcExpl_Initialize()
+function! <SID>SrcExpl_Init()
+
     " Access the Tags file 
-    call <SID>SrcExpl_AccessTags()
+    call <SID>SrcExpl_ProbeTags()
     " Found one Tags file
     if s:SrcExpl_TagsFilePath != ""
         " Compiled with 'Quickfix' feature
@@ -734,7 +747,7 @@ function! <SID>SrcExpl_Initialize()
             silent !ctags -R *
         endif
     else
-        " Ask user if or not want to create a tags file
+        " Ask user if or not create a tags file
         echohl Question |
             \ let l:answer = <SID>SrcExpl_GetInput("SrcExpl: "
                 \ . "'tags' file isn't found in your PATHs.\n"
@@ -747,7 +760,7 @@ function! <SID>SrcExpl_Initialize()
             " Call the external 'ctags' program
             silent !ctags -R *
             " Rejudge the tags file if existed
-            call <SID>SrcExpl_AccessTags()
+            call <SID>SrcExpl_ProbeTags()
             " Maybe there is no 'ctags' program in user's system
             if s:SrcExpl_TagsFilePath == ""
                 " Tell them what happened
@@ -765,10 +778,10 @@ function! <SID>SrcExpl_Initialize()
     " First set the height of preview window
     exe "set previewheight=". string(g:SrcExpl_WinHeight)
     " Load the Tags file into buffer
-    exe "silent! " . "pedit " . s:SrcExpl_TagsFilePath
+    exe "silent! " . "pedit " . s:SrcExpl_TagsFilePath . "tags"
     " Set the actual update time according to user's requestion
-    " one second/times by default
-    exe "set updatetime=" . string(g:SrcExpl_RefreshTime * 1000)
+    " 1000 milliseconds by default
+    exe "set updatetime=" . string(g:SrcExpl_RefreshTime)
     " Map the user's key to go back from the 
     " definition context.
     if g:SrcExpl_GoBackMapKey != ""
@@ -791,55 +804,11 @@ function! <SID>SrcExpl_Initialize()
         " Delete the autocmd group first
         autocmd!
         au! CursorHold * nested call g:SrcExpl_Refresh()
-        au! WinEnter * nested call <SID>SrcExpl_WinEnter()
+        au! WinEnter * nested call <SID>SrcExpl_EnterWin()
     augroup end
     " Initialize successfully
     return 0
-endfunction
 
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-" Close the Source Explorer window and delete its buffer
-
-function! <SID>SrcExpl_CloseWin()
-    " Just close the preview window
-    pclose
-    " Judge if or not the Source Explorer
-    " buffer had been deleted
-    let l:bufnum = bufnr(s:SrcExpl_BufTitle)
-    " Existed indeed
-    if l:bufnum != -1
-        exe "bdelete! " . s:SrcExpl_BufTitle
-    endif
-endfunction
-
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-" Open the Source Explorer window under the bottom of (G)Vim,
-" and set the buffer's proprity of the Source Explorer
-
-function! <SID>SrcExpl_OpenWin()
-    " Open the Source Explorer window as the idle one
-    exe "silent! " . "pedit " . s:SrcExpl_BufTitle
-    " Jump to the Source Explorer
-    silent! wincmd P
-    " Open successfully and jump to it indeed
-    if &previewwindow
-        " Show its name on the buffer list
-        setlocal buflisted
-        " No exact file
-        setlocal buftype=nofile
-        " Display the version of the Source Explorer
-        exe "normal a" . "Source Explorer V2.3"
-        " Make it no modifiable
-        setlocal nomodifiable
-        " Put it on the bottom of (G)Vim
-        silent! wincmd J
-    endif
-    " Go back to the privious window
-    silent! wincmd p
-    " Indeed back to the editor window
-    call g:SrcExpl_OtherPluginAdapter()
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
@@ -848,12 +817,13 @@ endfunction
 " the Source Explorer
 
 function! <SID>SrcExpl_Toggle()
-    " Closed
+
+    " Already closed
     if s:SrcExpl_Switch == 0
         " Initialize the proprities
-        let l:result = <SID>SrcExpl_Initialize()
-        " Initialize unsuccessfully
-        if l:result != 0
+        let l:rtn = <SID>SrcExpl_Init()
+        " Initialize failed
+        if l:rtn != 0
             " Quit
             return
         endif
@@ -861,7 +831,7 @@ function! <SID>SrcExpl_Toggle()
         call <SID>SrcExpl_OpenWin()
         " Set the switch flag on
         let s:SrcExpl_Switch = 1
-    " Opened
+    " Already Opened
     else
         " Set the switch flag off
         let  s:SrcExpl_Switch = 0
@@ -870,6 +840,7 @@ function! <SID>SrcExpl_Toggle()
         " Do the cleaning work
         call <SID>SrcExpl_Cleanup()
     endif
+
 endfunction
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
