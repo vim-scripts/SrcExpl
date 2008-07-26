@@ -3,12 +3,12 @@
 
 " File Name:      srcexpl.vim
 " Abstract:       A (G)VIM plugin for exploring the source code 
-"                 based on 'tags' and 'quickfix' works like the 
-"                 context window in Souce Insight.
+"                 based on 'tags' and 'quickfix', and it works 
+"                 like the context window in the Souce Insight.
 " Author:         Wenlong Che
 " EMail:          chewenlong @ buaa.edu.cn
-" Version:        2.5
-" Last Change:    July 15, 2008
+" Version:        2.6
+" Last Change:    July 26, 2008
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
@@ -16,18 +16,64 @@
 
 " // Set 300 ms for refreshing the Source Explorer
 " let g:SrcExpl_refreshTime  = 300
+
 " // Set the window height of Source Explorer
 " let g:SrcExpl_winHeight    = 9
+
 " // Let the Source Explorer update the tags file when opening
 " let g:SrcExpl_updateTags   = 1
+
 " // Set "Space" key for refresh the Source Explorer manually
 " let g:SrcExpl_refreshKey   = "<Space>"
+
 " // Set "Ctrl-b" key for back from the definition context
 " let g:SrcExpl_gobackKey    = "<C-b>"
+
+" // In order to Aviod conflicts, the Source Explorer should know
+" // what plugins are using buffers. And you need add their bufnames
+" // into the list below according to the command ":buffers!" 
+" let g:SrcExpl_pluginList = [
+"         \ "__Tag_List__", 
+"         \ "_NERD_tree_", 
+"         \ "Source_Explorer"
+"     \ ]
+
 " // The switch of the Source Explorer
 " nmap <F8> :SrcExplToggle<CR>
 
 " Just_change_above_of_them_by_yourself:-)
+
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+" NOTE: The graph below shows my work platform with some VIM  
+"       plugins, including 'Taglist', 'Source Explorer', and 
+"       'MiniBufExplorer'.
+
+" +----------------------------------------------------------+
+" |" Press <F1> to|[1:demo.c]*                               |
+" |               |                                          |
+" |-demo.c--------|-MiniBufExplorer--------------------------|
+" |               |                                          |
+" |function       |/* This is the edit window. */            |
+" |  foo          |                                          |
+" |  bar          |void foo(void)                            |
+" |               |{                                         |
+" |~              |}                                         |
+" |~              |                                          |
+" |~              |void bar(void)                            |
+" |~              |{                                         |
+" |~              |}                                         |
+" |~              |                                          |
+" |~              |~                                         |
+" |-__Tag_List__--|-demo.c-----------------------------------|
+" |Source Explorer V2.6                                      |
+" |                                                          |
+" |~                                                         |
+" |~                                                         |
+" |~                                                         |
+" |-Source_Explorer------------------------------------------|
+" |:                                                         |
+" +----------------------------------------------------------+
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
@@ -48,8 +94,8 @@ let s:save_cpo = &cpoptions
 
 if v:version < 700
     " Tell users the reason
-    echohl WarningMsg | 
-        \ echo "You need VIM 7.0 and above for running the Source Explorer" 
+    echohl ErrorMsg | 
+        \ echo "Require VIM 7.0 or above for running the Source Explorer." 
             \ | echohl None
     finish
 endif
@@ -64,6 +110,16 @@ set cpoptions&vim
 
 command! -nargs=0 -bar SrcExplToggle 
     \ call <SID>SrcExpl_Toggle()
+
+" User interface for opening the Source Explorer
+
+command! -nargs=0 -bar SrcExpl 
+    \ call <SID>SrcExpl()
+    
+" User interface for closing the Source Explorer
+
+command! -nargs=0 -bar SrcExplClose 
+    \ call <SID>SrcExpl_Close()
 
 " User interface for changing the 
 " height of the Source Explorer Window
@@ -95,12 +151,23 @@ if !exists('g:SrcExpl_refreshKey')
     let g:SrcExpl_refreshKey = ''
 endif
 
+" User interface for handling the 
+" conflicts between the Source Explorer
+" and other plugins
+if !exists('g:SrcExpl_pluginList')
+    let g:SrcExpl_pluginList = [
+        \ "__Tag_List__", 
+        \ "_NERD_tree_", 
+        \ "Source_Explorer"
+    \ ]
+endif
+
 " }}}
 
 " Global varialbes {{{
 
 " Buffer title for buffer listing
-let s:SrcExpl_bufTitle      =   'Source_Explorer'
+let s:SrcExpl_title         =    'Source_Explorer'
 
 " The log file path for debug
 let s:SrcExpl_logPath       =   './srcexpl.log'
@@ -114,12 +181,6 @@ let s:SrcExpl_symbol        =   ''
 " Original work path when initilizing
 let s:SrcExpl_rawWorkPath   =   ''
 
-" Debug Switch for logging the debug information
-let s:SrcExpl_isDebug       =   0
-
-" ID number of SrcExpl.vim
-let s:SrcExpl_scriptID      =   0
-
 " Whole file path being explored now
 let s:SrcExpl_currPath      =   ''
 
@@ -128,6 +189,15 @@ let s:SrcExpl_currLine      =   0
 
 " Current col number of the key word symbol
 let s:SrcExpl_currCol       =   0
+
+" Debug Switch for logging the debug information
+let s:SrcExpl_isDebug       =   0
+
+" ID number of SrcExpl.vim
+let s:SrcExpl_scriptID      =   0
+
+" The edit window position
+let s:SrcExpl_editWin       =   0
 
 " Source Explorer switch flag
 let s:SrcExpl_isOpen        =   0
@@ -140,63 +210,6 @@ let s:SrcExpl_status        =   0
 
 " }}}
 
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-" NOTE: The graph below shows my work platform with some VIM  
-"       plugins, including 'Taglist', 'Source Explorer', and 
-"       'MiniBufExplorer'.
-
-" +----------------------------------------------------------+
-" |" Press <F1> to|[1:demo.c]*                               |
-" |               |                                          |
-" |-demo.c--------|-MiniBufExplorer--------------------------|
-" |               |                                          |
-" |function       |/* This is the editor window. */          |
-" |  foo          |                                          |
-" |  bar          |void foo(void)                            |
-" |               |{                                         |
-" |~              |}                                         |
-" |~              |                                          |
-" |~              |void bar(void)                            |
-" |~              |{                                         |
-" |~              |}                                         |
-" |~              |                                          |
-" |~              |~                                         |
-" |-__Tag_List__--|-demo.c-----------------------------------|
-" |Source Explorer V2.5                                      |
-" |                                                          |
-" |~                                                         |
-" |~                                                         |
-" |~                                                         |
-" |-Source Explorer------------------------------------------|
-" |:                                                         |
-" +----------------------------------------------------------+
-
-" TODO: You can change this function by yourselves in order 
-"       to adapt the position of the editor window for the
-"       Source Explorer position. 
-
-function! g:SrcExpl_OtherPluginAdapter()
-
-    " The Taglist existed
-    if bufname("%") == "__Tag_List__"
-        " Move the cursor to its right window.
-        " Because I usually put the taglist
-        " window on my left. (See the graph above)
-        silent! wincmd l
-    endif
-    " The MiniBufExplorer existed
-    if bufname("%") == "-MiniBufExplorer-"
-        " Move the cursor to the window behind.
-        " Because I usually put the minibufexpl
-        " window on the top. (See the graph above)
-        silent! wincmd j
-    endif
-
-endfunction
-
-""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
 " SrcExpl_Refresh() {{{
 
 " Refresh the Source Explorer window and update the status
@@ -204,7 +217,12 @@ endfunction
 function! g:SrcExpl_Refresh()
 
     let l:exp = ""
-    let l:rtn = 0
+    " If or not the cursor is on the edit window
+    let l:rtn = <SID>SrcExpl_AdaptPlugins()
+
+    if l:rtn != 0
+        return
+    endif
 
     " Only Source Explorer window is valid 
     if &previewwindow
@@ -214,10 +232,13 @@ function! g:SrcExpl_Refresh()
     if &modified
         " Tell the user what has happened
         echohl ErrorMsg | 
-            \ echo "SrcExpl: The file you are editing is not saved."
+            \ echo "SrcExpl: The modified file is not saved."
         \ | echohl None
         return
     endif
+    " Get the edit window position
+    let s:SrcExpl_editWin = winnr()
+
     " Get the symbol under the cursor
     let l:rtn = <SID>SrcExpl_GetSymbol()
     " The symbol is invalid
@@ -230,10 +251,8 @@ function! g:SrcExpl_Refresh()
     silent! wincmd P
     if &previewwindow
         call <SID>SrcExpl_SetCurr()
-        " Go back to the privious window
-        silent! wincmd p
-        " Indeed back to the editor window
-        call g:SrcExpl_OtherPluginAdapter()
+        " Indeed go back to the edit window
+        silent! exe s:SrcExpl_editWin . "wincmd w"
     endif
     " Explore the tag using tag tool
     " First Just try to get the definition of the symbol
@@ -252,10 +271,8 @@ function! g:SrcExpl_Refresh()
             " Tag to the local definition
             " let s:SrcExpl_status = 1
         " endif
-        " Go back to the privious window again
-        silent! wincmd p
-        " Indeed back to the editor window
-        call g:SrcExpl_OtherPluginAdapter()
+        " Indeed go back to the edit window
+        silent! exe s:SrcExpl_editWin . "wincmd w"
         return
     endtry
     " Tag successfully and move to the preview window
@@ -275,13 +292,11 @@ function! g:SrcExpl_Refresh()
             call <SID>SrcExpl_MatchExpr()
             " Highlight the symbol
             call <SID>SrcExpl_HiExpr()
-            " Set the current editor property
+            " Set the current edit property
             call <SID>SrcExpl_SetCurr()
         endif
-        " Go back to the privious window again
-        silent! wincmd p
-        " Indeed back to the editor window
-        call g:SrcExpl_OtherPluginAdapter()
+        " Indeed go back to the edit window
+        silent! exe s:SrcExpl_editWin . "wincmd w"
     endif
 
 endfunction " }}}
@@ -311,10 +326,13 @@ endfunction " }}}
 
 function! <SID>SrcExpl_EnterWin()
 
+    " If or not the cursor is on the edit window
+    let l:rtn = <SID>SrcExpl_AdaptPlugins()
+
     " In the Source Explorer
-    if &previewwindow
+    if (&previewwindow) || (l:rtn != 0)
         if has("gui_running")
-            " Delet the SrcExplGoBack item in Popup menu
+            " Delete the SrcExplGoBack item in Popup menu
             silent! nunmenu 1.01 PopUp.&SrcExplGoBack
             " Do the mapping for 'double-click' and 'enter'
             if maparg('<2-LeftMouse>', 'n') == ''
@@ -364,6 +382,27 @@ function! <SID>SrcExpl_Debug(log)
             redir END
         endif
     endif
+
+endfunction " }}}
+
+" SrcExpl_AdaptPlugins() {{{
+
+" The Source Explorer window will not work when the cursor on the 
+
+" window of other plugins, such as "Taglist", "MiniBufExplorer" etc.
+
+function! <SID>SrcExpl_AdaptPlugins()
+
+    " Traversal the list of other plugins
+    for item in g:SrcExpl_pluginList
+        " If they acted as a split window
+        if bufname("%") ==# item
+            " Just avoid this operation
+            return 1
+        endif
+    endfor
+    " Safe
+    return 0
 
 endfunction " }}}
 
@@ -469,10 +508,8 @@ function! <SID>SrcExpl_SelToJump()
         endif
         let l:i += 1
     endwhile
-    " Go back to the privious window
-    silent! wincmd p
-    " Indeed back to the editor window
-    call g:SrcExpl_OtherPluginAdapter()
+    " Indeed go back to the edit window
+    silent! exe s:SrcExpl_editWin . "wincmd w"
     " Open the file of definition context
     exe "edit " . s:SrcExpl_tagsPath . l:f
     " Use Ex Command to Jump to the exact line of the definition
@@ -483,7 +520,7 @@ endfunction " }}}
 
 " SrcExpl_Jump() {{{
 
-" Jump to the editor window and point to the definition
+" Jump to the edit window and point to the definition
 
 function! <SID>SrcExpl_Jump()
 
@@ -493,7 +530,7 @@ function! <SID>SrcExpl_Jump()
         return
     endif
     " Do we get the definition already?
-    if (bufname("%") == s:SrcExpl_bufTitle)
+    if (bufname("%") == s:SrcExpl_title)
         if s:SrcExpl_status == 3 " No definition
             return
         endif
@@ -503,13 +540,11 @@ function! <SID>SrcExpl_Jump()
         call <SID>SrcExpl_SelToJump()
         return
     endif
-    " Go back to the privious window
-    silent! wincmd p
-    " Indeed back to the editor window
-    call g:SrcExpl_OtherPluginAdapter()
+    " Indeed go back to the edit window
+    silent! exe s:SrcExpl_editWin . "wincmd w"
     " We got only one definition
     if s:SrcExpl_status == 1
-        " Open the buffer using editor
+        " Open the buffer using edit window
         exe "edit " . s:SrcExpl_currPath
         " Jump to the context line of that symbol
         call cursor(s:SrcExpl_currLine, s:SrcExpl_currCol)
@@ -525,11 +560,11 @@ endfunction " }}}
 function! <SID>SrcExpl_NoDef()
 
     " Do the Source Explorer exsited already?
-    let l:bufnum = bufnr(s:SrcExpl_bufTitle)
+    let l:bufnum = bufnr(s:SrcExpl_title)
     " Not existed
     if l:bufnum == -1
         " Create a new buffer
-        let l:wcmd = s:SrcExpl_bufTitle
+        let l:wcmd = s:SrcExpl_title
     else
         " Edit the existing buffer
         let l:wcmd = '+buffer' . l:bufnum
@@ -577,11 +612,11 @@ function! <SID>SrcExpl_ListTags(exp)
     endif
 
     " Do the Source Explorer exsited already?
-    let l:bufnum = bufnr(s:SrcExpl_bufTitle)
+    let l:bufnum = bufnr(s:SrcExpl_title)
     " Create a new buffer
     if l:bufnum == -1
         " Create a new buffer
-        let l:wcmd = s:SrcExpl_bufTitle
+        let l:wcmd = s:SrcExpl_title
     else
         " Edit the existing buffer
         let l:wcmd = '+buffer' . l:bufnum
@@ -601,7 +636,7 @@ function! <SID>SrcExpl_ListTags(exp)
         " Get the tags dictionary array
         let l:list = taglist(a:exp)        
         " Begin build the Jump List for exploring the tags
-        put! = '[Jump List]: '. s:SrcExpl_symbol . ' (' . len(l:list) . ') '
+        put! = '[Jump List]: '. s:SrcExpl_symbol . ' \|' . len(l:list) . '\| '
         " Match the symbol
         call <SID>SrcExpl_MatchExpr()
         " Highlight the symbol
@@ -776,7 +811,7 @@ function! <SID>SrcExpl_ProbeTags()
         else
             " Other operating system
             echohl ErrorMsg | 
-                \ echo "SrcExpl: Not support on this OS platform." 
+                \ echo "SrcExpl: Not support on this OS platform for now." 
             \ | echohl None
         endif
     endif
@@ -795,10 +830,10 @@ function! <SID>SrcExpl_CloseWin()
     pclose
     " Judge if or not the Source Explorer
     " buffer had been deleted
-    let l:bufnum = bufnr(s:SrcExpl_bufTitle)
+    let l:bufnum = bufnr(s:SrcExpl_title)
     " Existed indeed
     if l:bufnum != -1
-        exe "bdelete! " . s:SrcExpl_bufTitle
+        exe "bdelete! " . s:SrcExpl_title
     endif
 
 endfunction " }}}
@@ -810,8 +845,11 @@ endfunction " }}}
 
 function! <SID>SrcExpl_OpenWin()
 
+    " Get the edit window position
+    let s:SrcExpl_editWin = winnr()
+
     " Open the Source Explorer window as the idle one
-    exe "silent! " . "pedit " . s:SrcExpl_bufTitle
+    exe "silent! " . "pedit " . s:SrcExpl_title
     " Jump to the Source Explorer
     silent! wincmd P
     " Open successfully and jump to it indeed
@@ -825,7 +863,7 @@ function! <SID>SrcExpl_OpenWin()
         " Goto the end of the buffer
         $
         " Display the version of the Source Explorer
-        put! ='Source Explorer V2.5'
+        put! ='Source Explorer V2.6'
         " Delete the extra trailing blank line
         $ d _
         " Make it no modifiable
@@ -833,10 +871,8 @@ function! <SID>SrcExpl_OpenWin()
         " Put it on the bottom of (G)Vim
         silent! wincmd J
     endif
-    " Go back to the privious window
-    silent! wincmd p
-    " Indeed back to the editor window
-    call g:SrcExpl_OtherPluginAdapter()
+    " Indeed go back to the edit window
+    silent! exe s:SrcExpl_editWin . "wincmd w"
 
 endfunction " }}}
 
@@ -848,7 +884,7 @@ function! <SID>SrcExpl_Cleanup()
 
     " GUI Version
     if has("gui_running")
-        " Delet the SrcExplGoBack item in Popup menu
+        " Delete the SrcExplGoBack item in Popup menu
         silent! nunmenu 1.01 PopUp.&SrcExplGoBack
         " Make the 'double-click' and 'enter' for nothing
         if maparg('<2-LeftMouse>', 'n') != ''
@@ -928,7 +964,7 @@ function! <SID>SrcExpl_Init()
     " First set the height of preview window
     exe "set previewheight=". string(g:SrcExpl_winHeight)
     " Load the Tags file into buffer
-    exe "silent! " . "pedit " . s:SrcExpl_tagsPath . "tags"
+     exe "silent! " . "pedit " . s:SrcExpl_tagsPath . "tags"
     " Set the actual update time according to user's requestion
     " 1000 milliseconds by default
     exe "set updatetime=" . string(g:SrcExpl_refreshTime)
@@ -963,7 +999,7 @@ endfunction " }}}
 
 " SrcExpl_Toggle() {{{
 
-" The User Interface function for open / close the Source Explorer
+" The User Interface function to open / close the Source Explorer
 
 function! <SID>SrcExpl_Toggle()
 
@@ -989,7 +1025,58 @@ function! <SID>SrcExpl_Toggle()
         " Close the window
         call <SID>SrcExpl_CloseWin()
         " Do the cleaning work
-    call <SID>SrcExpl_Cleanup()
+        call <SID>SrcExpl_Cleanup()
+    endif
+
+endfunction " }}}
+
+" SrcExpl_Close() {{{
+
+" The User Interface function to close the Source Explorer
+
+function! <SID>SrcExpl_Close()
+
+    if s:SrcExpl_isOpen == 1
+        " Set the switch flag off
+        let s:SrcExpl_isOpen = 0
+        " Close the window
+        call <SID>SrcExpl_CloseWin()
+        " Do the cleaning work
+        call <SID>SrcExpl_Cleanup()
+    else
+        " Tell users the reason
+        echohl ErrorMsg | 
+            \ echo "The Source Explorer is closed." 
+                \ | echohl None
+        return
+    endif
+
+endfunction " }}}
+
+" SrcExpl() {{{
+
+" The User Interface function to open the Source Explorer
+
+function! <SID>SrcExpl()
+
+    if s:SrcExpl_isOpen == 0
+        " Initialize the proprities
+        let l:rtn = <SID>SrcExpl_Init()
+        " Initialize failed
+        if l:rtn != 0
+            " Quit
+            return
+        endif
+        " Create the window
+        call <SID>SrcExpl_OpenWin()
+        " Set the switch flag on
+        let s:SrcExpl_isOpen = 1
+    else
+        " Tell users the reason
+        echohl ErrorMsg | 
+            \ echo "The Source Explorer is running." 
+                \ | echohl None
+        return
     endif
 
 endfunction " }}}
