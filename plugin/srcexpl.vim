@@ -6,8 +6,8 @@
 "                 and 'quickfix'. It works like the context window in the 
 "                 Source Insight.
 " Author:         CHE Wenlong <chewenlong AT buaa.edu.cn>
-" Version:        3.2
-" Last Change:    August 28, 2008
+" Version:        3.3
+" Last Change:    September 16, 2008
 
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
@@ -69,7 +69,7 @@
 " |~              |                                          |~               |
 " |~              |~                                         |~               |
 " |-__Tag_List__--|-demo.c-----------------------------------|--_NERD_tree_---|
-" |Source Explorer V3.2                                                       |
+" |Source Explorer V3.3                                                       |
 " |~                                                                          |
 " |~                                                                          |
 " |~                                                                          |
@@ -429,35 +429,6 @@ function! g:SrcExpl_GoBack()
 
 endfunction " }}}
 
-" SrcExpl_FilterEXcmd() {{{
-
-" Filter the Ex command information
-
-function! <SID>SrcExpl_FilterEXcmd(raw)
-
-    let l:idx = 0
-    let l:new = ""
-
-    " Get the EX symbol in order to jump
-    while a:raw[l:idx] != ''
-        " If the '*', '[' and ']' in the function definition,
-        " then we add the '\' in front of it.
-        if a:raw[l:idx] == '*'
-            let l:new = l:new . '\' . '*'
-        elseif a:raw[l:idx] == '['
-            let l:new = l:new . '\' . '['
-        elseif a:raw[l:idx] == ']'
-            let l:new = l:new . '\' . ']'
-        else
-            let l:new = l:new . a:raw[l:idx]
-        endif
-        let l:idx += 1
-    endwhile
-
-    return l:new
-
-endfunction " }}}
-
 " SrcExpl_SelToJump() {{{
 
 " Select one of multi-definitions, and jump to there
@@ -467,6 +438,7 @@ function! <SID>SrcExpl_SelToJump()
     let l:index = 0
     let l:fname = ""
     let l:excmd = ""
+    let l:expr  = ""
 
     " Must in the Source Explorer window
     if !&previewwindow
@@ -507,8 +479,14 @@ function! <SID>SrcExpl_SelToJump()
     silent! exe s:SrcExpl_editWin . "wincmd w"
     " Open the file of definition context
     exe "edit " . s:SrcExpl_tagsPath . l:fname
-    " Use Ex Command to Jump to the exact position of the definition
-    silent! exe <SID>SrcExpl_FilterEXcmd(l:excmd)
+    " Modify the EX Command to locate the tag exactly
+    let l:expr = substitute(l:excmd, '/^', '/^\\C', 'g')
+    let l:expr = substitute(l:expr,  '\*',  '\\\*', 'g')
+    let l:expr = substitute(l:expr,  '\[',  '\\\[', 'g')
+    let l:expr = substitute(l:expr,  '\]',  '\\\]', 'g')
+    " Use EX Command to Jump to the exact position of the definition
+    silent! exe l:expr
+    " Match the symbol
     call <SID>SrcExpl_MatchExpr()
 
 endfunction " }}}
@@ -587,7 +565,7 @@ function! <SID>SrcExpl_MatchExpr()
     " Match the symbol
     call search("$", "b")
     let s:SrcExpl_symbol = substitute(s:SrcExpl_symbol, 
-        \ '\\', '\\\\', "")
+        \ '\\', '\\\\', '')
     call search('\V\C\<' . s:SrcExpl_symbol . '\>')
 
 endfunction " }}}
@@ -759,14 +737,21 @@ endfunction " }}}
 
 function! <SID>SrcExpl_ViewOneDef(fname, excmd)
 
+    let l:expr = ""
+
     " Open the file first
     exe "silent " . "pedit " . a:fname
     " Go to the Source Explorer window
     silent! wincmd P
     " Indeed back to the preview window
     if &previewwindow
+        " Modify the EX Command to locate the tag exactly
+        let l:expr = substitute(a:excmd, '/^', '/^\\C', 'g')
+        let l:expr = substitute(l:expr,  '\*',  '\\\*', 'g')
+        let l:expr = substitute(l:expr,  '\[',  '\\\[', 'g')
+        let l:expr = substitute(l:expr,  '\]',  '\\\]', 'g')
         " Execute EX command according to the parameter
-        silent! exe <SID>SrcExpl_FilterEXcmd(a:excmd)
+        silent! exe l:expr
         " Just avoid highlight
         " silent! /\<\>
         " Match the symbol
@@ -1059,7 +1044,7 @@ function! <SID>SrcExpl_OpenWin()
         " Goto the end of the buffer
         $
         " Display the version of the Source Explorer
-        put! ='Source Explorer V3.2'
+        put! ='Source Explorer V3.3'
         " Delete the extra trailing blank line
         $ d _
         " Make it no modifiable
