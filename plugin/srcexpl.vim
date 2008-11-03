@@ -1,84 +1,87 @@
 
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"                                                                              "
+" File_Name__: srcexpl.vim                                                     "
+" Abstract___: A (G)VIM plugin for exploring the source code based on 'tags'   "
+"              and 'quickfix'. It works like the context window in the         "
+"              Source Insight.                                                 "
+" Author_____: CHE Wenlong <chewenlong AT buaa.edu.cn>                         "
+" Version____: 3.4                                                             "
+" Last_Change: October 31, 2008                                                "
+"                                                                              "
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-" File Name:      srcexpl.vim
-" Abstract:       A (G)VIM plugin for exploring the source code based on 'tags' 
-"                 and 'quickfix'. It works like the context window in the 
-"                 Source Insight.
-" Author:         CHE Wenlong <chewenlong AT buaa.edu.cn>
-" Version:        3.3
-" Last Change:    September 16, 2008
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" NOTE: The graph below shows my work platform with some VIM plugins,          "
+"       including 'Source Explorer', 'Taglist' and 'NERD tree'. And I usually  "
+"       use the 'Trinity' plugin (trinity.vim) to manage all of them.          "
+"                                                                              "
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+" +----------------------------------------------------------------------------+
+" | FILE | Edit | Tools | Syntax | Buffers | Window | Help |                   |
+" +----------------------------------------------------------------------------+
+" |-demo.c-------- |-----------------------------------------|-/home/myprj/----|
+" |function        | 1 void foo(void)     /* function 1 */   ||~ src/          |
+" |  foo           | 2 {                                     || `-demo.c       |
+" |  bar           | 3 }                                     |`-tags           |
+" |                | 4 void bar(void)     /* function 2 */   |                 |
+" |~ +----------+  | 5 {                                     |~ +-----------+  |
+" |~ | Tag List |\ | 6 }                                     |~ | NERD Tree |\ |
+" |~ +__________+ ||~        +-----------------+             |~ +___________+ ||
+" |~ \___________\||~        | The Main Editor |\            |~ \____________\||
+" |~               |~        +_________________+ |           |~                |
+" |~               |~        \__________________\|           |~                |
+" |~               |~                                        |~                |
+" |-__Tag_List__---|-demo.c----------------------------------|-_NERD_tree_-----|
+" |Source Explorer V3.4                                                        |
+" |~                              +-----------------+                          |
+" |~                              | Source Explorer |\                         |
+" |~                              +_________________+ |                        |
+" |~                              \__________________\|                        |
+" |-Source_Explorer[Preview]---------------------------------------------------|
+" |:TrinityToggleAll                                                           |
+" +----------------------------------------------------------------------------+
 
-" The_setting_example_in_my_vimrc_file:-)
-
-" // The switch of the Source Explorer
-" nmap <F8> :SrcExplToggle<CR>
-
-" // Set the window height of Source Explorer
-" let g:SrcExpl_winHeight = 8
-
-" // Set 100 ms for refreshing the Source Explorer
-" let g:SrcExpl_refreshTime = 100
-
-" // Let the Source Explorer update the tags file when opening
-" let g:SrcExpl_updateTags = 1
-
-" // Set "Enter" key to jump into the exact definition context
-" let g:SrcExpl_jumpKey = "<ENTER>"
-
-" // Set "Space" key for back from the definition context
-" let g:SrcExpl_gobackKey = "<SPACE>"
-
-" // In order to Avoid conflicts, the Source Explorer should know what plugins
-" // are using buffers. And you need add their bufname into the list below 
-" // according to the command ":buffers!"
-" let g:SrcExpl_pluginList = [
-"         \ "__Tag_List__", 
-"         \ "_NERD_tree_", 
-"         \ "Source_Explorer"
-"     \ ]
-
-" // Enable or disable local definition searching, and note that this is not 
-" // guaranteed to work, the Source Explorer does not check the syntax for now, 
-" // it only searches for a match with the keyword according to command 'gd'.
-" let g:SrcExpl_searchLocalDef = 1
-
-" Just_change_above_of_them_by_yourself:-)
-
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-" NOTE: The graph below shows my work platform with some VIM plugins, including
-"       'Source Explorer', 'Taglist' and 'NERD tree'. And I usually use the 
-"       'Trinity' plugin (trinity.vim) to manage them.
-
-" +---------------------------------------------------------------------------+
-" |---------------------------------------------------------------------------|
-" |-demo.c--------|------------------------------------------|-/home/myprj----|
-" |               |                                          |                |
-" |function       |/* This is the edit window. */            |~ test/         |
-" |  foo          |                                          ||               |
-" |  bar          |void foo(void)                            |`-demo.c        |
-" |               |{                                         |                |
-" |~              |}                                         |~               |
-" |~              |                                          |~               |
-" |~              |void bar(void)                            |~               |
-" |~              |{                                         |~               |
-" |~              |}                                         |~               |
-" |~              |                                          |~               |
-" |~              |~                                         |~               |
-" |-__Tag_List__--|-demo.c-----------------------------------|--_NERD_tree_---|
-" |Source Explorer V3.3                                                       |
-" |~                                                                          |
-" |~                                                                          |
-" |~                                                                          |
-" |~                                                                          |
-" |-Source_Explorer-----------------------------------------------------------|
-" |:TrinityToggleAll                                                          |
-" +---------------------------------------------------------------------------+
-
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"                                                                              "
+" The_setting_example_in_my_vimrc_file:-)                                      "
+"                                                                              "
+" // The switch of the Source Explorer                                         "
+" nmap <F8> :SrcExplToggle<CR>                                                 "
+"                                                                              "
+" // Set the height of Source Explorer window                                  "
+" let g:SrcExpl_winHeight = 8                                                  "
+"                                                                              "
+" // Set 100 ms for refreshing the Source Explorer                             "
+" let g:SrcExpl_refreshTime = 100                                              "
+"                                                                              "
+" // Let the Source Explorer update the tags file when opening                 "
+" let g:SrcExpl_updateTags = 1                                                 "
+"                                                                              "
+" // Set "Enter" key to jump into the exact definition context                 "
+" let g:SrcExpl_jumpKey = "<ENTER>"                                            "
+"                                                                              "
+" // Set "Space" key for back from the definition context                      "
+" let g:SrcExpl_gobackKey = "<SPACE>"                                          "
+"                                                                              "
+" // In order to Avoid conflicts, the Source Explorer should know what plugins "
+" // are using buffers. And you need add their bufname into the list below     "
+" // according to the command ":buffers!"                                      "
+" let g:SrcExpl_pluginList = [                                                 "
+"         \ "__Tag_List__",                                                    "
+"         \ "_NERD_tree_",                                                     "
+"         \ "Source_Explorer"                                                  "
+"     \ ]                                                                      "
+"                                                                              "
+" // Enable or disable local definition searching, and note that this is not   "
+" // guaranteed to work, the Source Explorer doesn't check the syntax for now. "
+" // It only searches for a match with the keyword according to command 'gd'.  "
+" let g:SrcExpl_searchLocalDef = 1                                             "
+"                                                                              "
+" Just_change_above_of_them_by_yourself:-)                                     "
+"                                                                              "
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 " Avoid reloading {{{
 
@@ -631,7 +634,7 @@ function! <SID>SrcExpl_NoteNoDef()
 
     " Do the Source Explorer existed already?
     let l:bufnum = bufnr(s:SrcExpl_title)
-    " Not existed
+    " Not existed, create a new buffer
     if l:bufnum == -1
         " Create a new buffer
         let l:wcmd = s:SrcExpl_title
@@ -647,7 +650,9 @@ function! <SID>SrcExpl_NoteNoDef()
     if &previewwindow
         " First make it modifiable
         setlocal modifiable
-        setlocal buflisted
+        " Not show its name on the buffer list
+        setlocal nobuflisted
+        " No exact file
         setlocal buftype=nofile
         " Report the reason why Source Explorer
         " can not point to the definition
@@ -674,9 +679,9 @@ endfunction " }}}
 
 function! <SID>SrcExpl_ListMultiDefs(list, len)
 
-    " Does the Source Explorer existed already?
+    "Source Explorer existed already?
     let l:bufnum = bufnr(s:SrcExpl_title)
-    " Create a new buffer
+    " Not existed, create a new buffer
     if l:bufnum == -1
         " Create a new buffer
         let l:wcmd = s:SrcExpl_title
@@ -692,7 +697,9 @@ function! <SID>SrcExpl_ListMultiDefs(list, len)
     if &previewwindow
         " Reset the property of the Source Explorer
         setlocal modifiable
-        setlocal buflisted
+        " Not show its name on the buffer list
+        setlocal nobuflisted
+        " No exact file
         setlocal buftype=nofile
         " Delete all lines in buffer
         1,$d _
@@ -888,7 +895,7 @@ function! g:SrcExpl_Refresh()
     " Avoid errors of multi-buffers
     if &modified
         echohl ErrorMsg
-        echo "SrcExpl: The modified file is not saved."
+        echo "SrcExpl: This modified file is not saved."
         echohl None
         return
     endif
@@ -1007,13 +1014,6 @@ function! <SID>SrcExpl_CloseWin()
 
     " Just close the preview window
     pclose
-    " Judge if or not the Source Explorer
-    " buffer had been deleted
-    let l:bufnum = bufnr(s:SrcExpl_title)
-    " Existed indeed
-    if l:bufnum != -1
-        exe "bdelete! " . s:SrcExpl_title
-    endif
 
 endfunction " }}}
 
@@ -1028,15 +1028,26 @@ function! <SID>SrcExpl_OpenWin()
     let s:SrcExpl_editWin = winnr()
     " Get the tab page number
     let s:SrcExpl_tabPage = tabpagenr()
-
-    " Open the Source Explorer window as the idle one
-    exe "silent " . "pedit " . s:SrcExpl_title
+    " Source Explorer existed already?
+    let l:bufnum = bufnr(s:SrcExpl_title)
+    " Not existed, create a new buffer
+    if l:bufnum == -1
+        " Create a new buffer
+        let l:wcmd = s:SrcExpl_title
+    else
+        " Edit the existing buffer
+        let l:wcmd = '+buffer' . l:bufnum
+    endif
+    " Reopen the Source Explorer idle window
+    exe "silent " . "pedit " . l:wcmd
     " Jump to the Source Explorer
     silent! wincmd P
     " Open successfully and jump to it indeed
     if &previewwindow
-        " Show its name on the buffer list
-        setlocal buflisted
+        " First make it modifiable
+        setlocal modifiable
+        " Not show its name on the buffer list
+        setlocal nobuflisted
         " No exact file
         setlocal buftype=nofile
         " Delete all lines in buffer
@@ -1044,7 +1055,7 @@ function! <SID>SrcExpl_OpenWin()
         " Goto the end of the buffer
         $
         " Display the version of the Source Explorer
-        put! ='Source Explorer V3.3'
+        put! ='Source Explorer V3.4'
         " Delete the extra trailing blank line
         $ d _
         " Make it no modifiable
@@ -1226,7 +1237,7 @@ function! <SID>SrcExpl_Close()
     else
         " Tell users the reason
         echohl ErrorMsg
-        echo "SrcExpl: The plugin is close."
+        echo "SrcExpl: Source Explorer is close."
         echohl None
         return
     endif
@@ -1260,7 +1271,7 @@ function! <SID>SrcExpl()
         endif
         " Already running
         echohl ErrorMsg
-        echo "SrcExpl: The plugin is running."
+        echo "SrcExpl: Source Explorer is running."
         echohl None
         return
     endif
@@ -1275,9 +1286,9 @@ unlet s:save_cpo
 
 " }}}
 
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-
-" vim:foldmethod=marker:tabstop=4
-
-"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+"                                                                              "
+" vim:foldmethod=marker:tabstop=4                                              
+"                                                                              "
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
