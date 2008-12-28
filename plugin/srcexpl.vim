@@ -6,8 +6,8 @@
 "              and 'quickfix'. It works like the context window in the         "
 "              Source Insight.                                                 "
 " Author_____: CHE Wenlong <chewenlong AT buaa.edu.cn>                         "
-" Version____: 3.5                                                             "
-" Last_Change: November 8, 2008                                                "
+" Version____: 3.6                                                             "
+" Last_Change: December 28, 2008                                               "
 "                                                                              "
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
@@ -34,7 +34,7 @@
 " |~               |~        \__________________\|           |~                |
 " |~               |~                                        |~                |
 " |-__Tag_List__---|-demo.c----------------------------------|-_NERD_tree_-----|
-" |Source Explorer V3.5                                                        |
+" |Source Explorer V3.6                                                        |
 " |~                              +-----------------+                          |
 " |~                              | Source Explorer |\                         |
 " |~                              +_________________+ |                        |
@@ -410,10 +410,6 @@ function! g:SrcExpl_GoBack()
 
     " Jump back to the previous position
     call <SID>SrcExpl_GetMark()
-    " Open the folding if exists
-    if has("folding")
-        silent! . foldopen!
-    endif
 
     " Successfully
     return 0
@@ -560,10 +556,6 @@ endfunction " }}}
 
 function! <SID>SrcExpl_MatchExpr()
 
-    " First open the folding if exists
-    if has("folding")
-        silent! . foldopen!
-    endif
     " Match the symbol
     call search("$", "b")
     let s:SrcExpl_symbol = substitute(s:SrcExpl_symbol, 
@@ -739,7 +731,7 @@ function! <SID>SrcExpl_ListMultiDefs(list, len)
     " Delete the extra trailing blank line
     $ d _
     " Move the cursor to the top of the Source Explorer window
-    exe "normal! gg"
+    exe "normal! " . "gg"
     " Back to the first line
     setlocal nomodifiable
 
@@ -1157,7 +1149,7 @@ function! <SID>SrcExpl_OpenWin()
         " Goto the end of the buffer
         $
         " Display the version of the Source Explorer
-        put! ='Source Explorer V3.5'
+        put! ='Source Explorer V3.6'
         " Delete the extra trailing blank line
         $ d _
         " Make it no modifiable
@@ -1211,6 +1203,13 @@ endfunction " }}}
 
 function! <SID>SrcExpl_Init()
 
+    " Open all the folds
+    if has("folding")
+        " Open this file at first
+        exe "normal " . "zR"
+        " Let it works during the editing period
+        set foldlevelstart=99
+    endif
     " Not highlight the word which had been searched
     " Because execute EX command will active a search event
     set nohlsearch
@@ -1218,7 +1217,6 @@ function! <SID>SrcExpl_Init()
     set noautochdir
     " Delete all the marks
     delmarks A-Z a-z 0-9
-
     " Initialize script global variables
     call <SID>SrcExpl_InitGlbVals()
 
