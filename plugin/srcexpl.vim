@@ -540,8 +540,11 @@ function! g:SrcExpl_Jump()
         let s:SrcExpl_csrLine = line(".")
         " Try to tag the symbol again
         let l:expr = '\C\<' . s:SrcExpl_symbol . '\>'
+		" Try to tag something
         call <SID>SrcExpl_TryToTag(l:expr)
+	    " Refresh all the screen
         redraw
+		" Go back to the main edit window
         silent! exe s:SrcExpl_editWin . "wincmd w"
     endif
 
@@ -783,30 +786,34 @@ endfunction " }}}
 function! <SID>SrcExpl_TryToTag(expr)
 
     " Function calling result
+    let l:len  = -1 
     let l:rslt = -1
 
-    " We get the tag list of the expression
-    let l:list = taglist(a:expr)
-    " Then get the length of taglist
-    let l:len = len(l:list)
+    " Is the symbol valid ?
+    if a:expr != '\C\<\>'
+        " We get the tag list of the expression
+        let l:list = taglist(a:expr)
+        " Then get the length of taglist
+        let l:len = len(l:list)
+    endif
 
-    " No tag
-    if l:len <= 0
-        " No definition
-        let s:SrcExpl_status = 0
-        let l:rslt = <SID>SrcExpl_NoteNoDef()
     " One tag
-    elseif l:len == 1
-        " One definition
-        let s:SrcExpl_status = 1
+    if l:len == 1
         " Get dictionary to load tag's file name and ex command
         let l:dict = get(l:list, 0, {})
         let l:rslt = <SID>SrcExpl_ViewOneDef(l:dict['filename'], l:dict['cmd'])
+        " One definition
+        let s:SrcExpl_status = 1
     " Multiple tags list
-    else
+    elseif l:len > 1
+        let l:rslt = <SID>SrcExpl_ListMultiDefs(l:list, l:len)
         " Multiple definitions
         let s:SrcExpl_status = 2
-        let l:rslt = <SID>SrcExpl_ListMultiDefs(l:list, l:len)
+    " No tag
+    else
+        let l:rslt = <SID>SrcExpl_NoteNoDef()
+        " No definition
+        let s:SrcExpl_status = 0
     endif
 
     " Got the result for the caller
@@ -931,13 +938,13 @@ function! g:SrcExpl_Refresh()
     if l:rslt >= 0
         " We got a local definition
         let s:SrcExpl_status = 3
+        " Refresh all the screen
+        redraw
     else
-        " Try to tag
+        " Try to tag something
         call <SID>SrcExpl_TryToTag(l:expr)
     endif
 
-    " Refresh all the screen
-    redraw
     " Go back to the main edit window
     silent! exe s:SrcExpl_editWin . "wincmd w"
 
