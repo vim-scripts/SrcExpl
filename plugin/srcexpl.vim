@@ -6,8 +6,8 @@
 "              and 'quickfix'. It works like the context window in the         "
 "              Source Insight.                                                 "
 " Author_____: CHE Wenlong <chewenlong AT buaa.edu.cn>                         "
-" Version____: 3.9                                                             "
-" Last_Change: March 3, 2009                                                   "
+" Version____: 4.0                                                             "
+" Last_Change: March 9, 2009                                                   "
 "                                                                              "
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
@@ -34,7 +34,7 @@
 " |~               |~        \__________________\|           |~                |
 " |~               |~                                        |~                |
 " |-__Tag_List__---|-demo.c----------------------------------|-_NERD_tree_-----|
-" |Source Explorer V3.9                                                        |
+" |Source Explorer V4.0                                                        |
 " |~                              +-----------------+                          |
 " |~                              | Source Explorer |\                         |
 " |~                              +_________________+ |                        |
@@ -76,11 +76,12 @@
 " // It only searches for a match with the keyword according to command 'gd'   "
 " let g:SrcExpl_searchLocalDef = 1
 "                                                                              "
-" // Let the Source Explorer update the tags file when opening                 "
-" let g:SrcExpl_isUpdateTags = 1
+" // Do not let the Source Explorer update the tags file when opening          "
+" let g:SrcExpl_isUpdateTags = 0
 "                                                                              "
-" // Use program 'ctags' with argument '-R' to create or update a tags file    "
-" let g:SrcExpl_updateTagsCmd = "ctags -R ."
+" // Use program 'ctags' with argument '--sort=foldcase -R' to create or       "
+" // update a tags file                                                        "
+" let g:SrcExpl_updateTagsCmd = "ctags --sort=foldcase -R ."
 "                                                                              "
 " // Set "<F10>" key for updating the tags file artificially                   "
 " let g:SrcExpl_updateTagsKey = "<F10>"
@@ -132,8 +133,7 @@ command! -nargs=0 -bar SrcExplClose
 command! -nargs=0 -bar SrcExplToggle 
     \ call <SID>SrcExpl_Toggle()
 
-" User interface for changing the height of 
-" Source Explorer Window
+" User interface for changing the height of the Source Explorer window
 if !exists('g:SrcExpl_winHeight')
     let g:SrcExpl_winHeight = 8
 endif
@@ -177,9 +177,9 @@ if !exists('g:SrcExpl_isUpdateTags')
 endif
 
 " User interface to create a 'tags' file using exact ctags
-" utility, 'ctags -R .' as default
+" utility, 'ctags --sort=foldcase -R .' as default
 if !exists('g:SrcExpl_updateTagsCmd')
-    let g:SrcExpl_updateTagsCmd = "ctags -R ."
+    let g:SrcExpl_updateTagsCmd = "ctags --sort=foldcase -R ."
 endif
 
 " User interface to update tags file artificially
@@ -280,7 +280,7 @@ endfunction " }}}
 
 function! g:SrcExpl_GoBack()
 
-    " If or not the cursor is on the edit window
+    " If or not the cursor is on the main editor window
     if &previewwindow || <SID>SrcExpl_AdaptPlugins()
         return -1
     endif
@@ -292,7 +292,7 @@ endfunction " }}}
 
 " SrcExpl_Jump() {{{
 
-" Jump to the edit window and point to the definition
+" Jump to the main editor window and point to the definition
 
 function! g:SrcExpl_Jump()
 
@@ -317,10 +317,10 @@ function! g:SrcExpl_Jump()
     endif
 
     if g:SrcExpl_searchLocalDef != 0
-        " We have already jumped to the edit window
+        " We have already jumped to the main editor window
         let s:SrcExpl_isJumped = 1
     endif
-    " Indeed go back to the edit window
+    " Indeed go back to the main editor window
     silent! exe s:SrcExpl_editWin . "wincmd w"
     " Set the mark for recording the current position
     call <SID>SrcExpl_SetMarkList()
@@ -334,7 +334,7 @@ function! g:SrcExpl_Jump()
         return 0
     endif
 
-    " Open the buffer using edit window
+    " Open the buffer using main editor window
     exe "edit " . s:SrcExpl_currMark[0]
     " Jump to the context line of that symbol
     call cursor(s:SrcExpl_currMark[1], s:SrcExpl_currMark[2])
@@ -348,7 +348,7 @@ function! g:SrcExpl_Jump()
         " Get the cursor line number
         let s:SrcExpl_csrLine = line(".")
         " Try to tag the symbol again
-        let l:expr = '\C\<' . s:SrcExpl_symbol . '\>'
+        let l:expr = '\<' . s:SrcExpl_symbol . '\>\C'
         " Try to tag something
         call <SID>SrcExpl_TagSth(l:expr)
     endif
@@ -369,7 +369,7 @@ function! g:SrcExpl_Refresh()
         return -1
     endif
 
-    " If or not the cursor is on the edit window
+    " If or not the cursor is on the main editor window
     if &previewwindow || <SID>SrcExpl_AdaptPlugins()
         return -2
     endif
@@ -380,7 +380,7 @@ function! g:SrcExpl_Refresh()
         return -3
     endif
 
-    " Get the edit window position
+    " Get the ID of main editor window
     let s:SrcExpl_editWin = winnr()
 
     " Get the symbol under the cursor
@@ -390,7 +390,7 @@ function! g:SrcExpl_Refresh()
 
     " call <SID>SrcExpl_Debug('s:SrcExpl_symbol is (' . s:SrcExpl_symbol . ')')
 
-    let l:expr = '\C\<' . s:SrcExpl_symbol . '\>'
+    let l:expr = '\<' . s:SrcExpl_symbol . '\>\C'
 
     " Try to Go to local declaration
     if g:SrcExpl_searchLocalDef != 0
@@ -511,7 +511,7 @@ function! <SID>SrcExpl_EnterWin()
             \ ":call g:SrcExpl_Jump()<CR>"
             exe "nunmap " . g:SrcExpl_jumpKey
         endif
-    " In the edit window
+    " In the main editor window
     else
         if has("gui_running")
             " You can use SrcExplGoBack item in Popup menu
@@ -571,7 +571,7 @@ function! <SID>SrcExpl_GetMarkList()
         return <SID>SrcExpl_GetMarkList()
     endif
 
-    " Load the buffer content into the edit window
+    " Load the buffer content into the main editor window
     exe "edit " . get(s:SrcExpl_markList, -1)[0]
     " Jump to the context position of that symbol
     call cursor(get(s:SrcExpl_markList, -1)[1], get(s:SrcExpl_markList, -1)[2])
@@ -632,7 +632,7 @@ function! <SID>SrcExpl_SelToJump()
         let l:index += 1
     endwhile
 
-    " Indeed go back to the edit window
+    " Indeed go back to the main editor window
     silent! exe s:SrcExpl_editWin . "wincmd w"
     " Open the file containing the definition context
     exe "edit " . l:fpath
@@ -732,7 +732,7 @@ function! <SID>SrcExpl_PromptNoDef()
         $ d _
         " Make it unmodifiable again
         setlocal nomodifiable
-        " Go back to the main edit window
+        " Go back to the main editor window
         silent! exe s:SrcExpl_editWin . "wincmd w"
     endif
 
@@ -805,7 +805,7 @@ function! <SID>SrcExpl_ListMultiDefs(list, len)
     exe "normal! " . "gg"
     " Back to the first line
     setlocal nomodifiable
-    " Go back to the main edit window
+    " Go back to the main editor window
     silent! exe s:SrcExpl_editWin . "wincmd w"
 
 endfunction " }}}
@@ -845,7 +845,7 @@ function! <SID>SrcExpl_ViewOneDef(fpath, excmd)
         call <SID>SrcExpl_SetCurrMark()
         " Refresh all the screen
         redraw
-        " Go back to the main edit window
+        " Go back to the main editor window
         silent! exe s:SrcExpl_editWin . "wincmd w"
     endif
 
@@ -860,7 +860,7 @@ function! <SID>SrcExpl_TagSth(expr)
     let l:len = -1 
 
     " Is the symbol valid ?
-    if a:expr != '\C\<\>'
+    if a:expr != '\<\>\C'
         " We get the tag list of the expression
         let l:list = taglist(a:expr)
         " Then get the length of taglist
@@ -929,7 +929,7 @@ function! <SID>SrcExpl_GoDecl(expr)
         call <SID>SrcExpl_SetCurrMark()
         " Refresh all the screen
         redraw
-        " Go back to the main edit window
+        " Go back to the main editor window
         silent! exe s:SrcExpl_editWin . "wincmd w"
         " We got a local definition
         let s:SrcExpl_status = 3
@@ -961,7 +961,7 @@ function! <SID>SrcExpl_GetSymbol()
             if g:SrcExpl_searchLocalDef == 0
                 return -1
             else
-                " Do not refresh when jumping to the edit window
+                " Do not refresh when jumping to the main editor window
                 if s:SrcExpl_isJumped == 1
                     " Get the cursor line number
                     let s:SrcExpl_csrLine = line(".")
@@ -1012,14 +1012,14 @@ endfunction " }}}
 
 " SrcExpl_GetEditWin() {{{
 
-" Get the main edit window index
+" Get the main editor window index
 
 function! <SID>SrcExpl_GetEditWin()
 
     let l:i = 1
     let l:j = 1
 
-    " Loop for searching the edit window
+    " Loop for searching the main editor window
     while 1
         " Traverse the plugin list for each sub-window
         for item in g:SrcExpl_pluginList
@@ -1089,11 +1089,11 @@ function! <SID>SrcExpl_InitGlbVal()
     let s:SrcExpl_status   = 0
     " Line number of the current cursor
     let s:SrcExpl_csrLine  = 0
-    " The edit window number
+    " The ID of main editor window
     let s:SrcExpl_editWin  = 0
     " The tab page number
     let s:SrcExpl_tabPage  = 0
-    " If jump to the edit window
+    " Have we jumped to the main editor window ?
     let s:SrcExpl_isJumped = 0
     " The mark for the current position
     let s:SrcExpl_currMark = []
@@ -1122,7 +1122,7 @@ endfunction " }}}
 
 function! <SID>SrcExpl_OpenWin()
 
-    " Get the edit window position
+    " Get the ID of main editor window
     let s:SrcExpl_editWin = winnr()
     " Get the tab page number
     let s:SrcExpl_tabPage = tabpagenr()
@@ -1155,7 +1155,7 @@ function! <SID>SrcExpl_OpenWin()
         " Goto the end of the buffer
         $
         " Display the version of the Source Explorer
-        put! ='Source Explorer V3.9'
+        put! ='Source Explorer V4.0'
         " Delete the extra trailing blank line
         $ d _
         " Make it no modifiable
@@ -1164,7 +1164,7 @@ function! <SID>SrcExpl_OpenWin()
         silent! wincmd J
     endif
 
-    " Indeed go back to the edit window
+    " Indeed go back to the main editor window
     silent! exe s:SrcExpl_editWin . "wincmd w"
 
 endfunction " }}}
@@ -1221,13 +1221,12 @@ function! <SID>SrcExpl_Init()
     " Initialize Vim environment
     call <SID>SrcExpl_InitVimEnv()
 
-    " We must get a valid edit window
+    " We must get the ID of main editor window
     let l:tmp = <SID>SrcExpl_GetEditWin()
-    " Not found one valid edit window
+    " Not found
     if l:tmp < 0
-        " Can not find main edit window
-        call <SID>SrcExpl_ReportErr("Can not Found the edit window")
-        " We quit
+        " Can not find the main editor window
+        call <SID>SrcExpl_ReportErr("Can not Found the editor window")
         return -1
     endif
     " Jump to that
@@ -1236,7 +1235,6 @@ function! <SID>SrcExpl_Init()
     if g:SrcExpl_isUpdateTags != 0
         " Update the tags file right now
         if g:SrcExpl_UpdateTags()
-            " Failed
             return -2
         endif
     endif
