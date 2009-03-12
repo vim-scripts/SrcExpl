@@ -3,18 +3,22 @@
 "                                                                              "
 " File_Name__: srcexpl.vim                                                     "
 " Abstract___: A (G)VIM plugin for exploring the source code based on 'tags'   "
-"              and 'quickfix'. It works like the context window in the         "
-"              Source Insight.                                                 "
-" Author_____: CHE Wenlong <chewenlong AT buaa.edu.cn>                         "
-" Version____: 4.0                                                             "
-" Last_Change: March 9, 2009                                                   "
+"              and 'quickfix'. It works like the context window in 'Source     "
+"              Insight'.                                                       "
+" Author_____: Wenlong Che <chewenlong AT buaa.edu.cn>                         "
+" Version____: 4.1                                                             "
+" Last_Change: March 12, 2009                                                  "
+" Licence____: This program is free software; you can redistribute it and / or "
+"              modify it under the terms of the GNU General Public License as  "
+"              published by the Free Software Foundation; either version 2, or "
+"              any later version.                                              "
 "                                                                              "
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 " NOTE: The graph below shows my work platform with some VIM plugins,          "
 "       including 'Source Explorer', 'Taglist' and 'NERD tree'. And I usually  "
-"       use the 'Trinity' plugin (trinity.vim) to manage all of them.          "
+"       use a plugin named 'trinity.vim' to manage them.                       "
 "                                                                              "
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
@@ -34,7 +38,7 @@
 " |~               |~        \__________________\|           |~                |
 " |~               |~                                        |~                |
 " |-__Tag_List__---|-demo.c----------------------------------|-_NERD_tree_-----|
-" |Source Explorer V4.0                                                        |
+" |Source Explorer v4.1                                                        |
 " |~                              +-----------------+                          |
 " |~                              | Source Explorer |\                         |
 " |~                              +_________________+ |                        |
@@ -138,8 +142,7 @@ if !exists('g:SrcExpl_winHeight')
     let g:SrcExpl_winHeight = 8
 endif
 
-" User interface for setting the update time interval 
-" of each refreshing
+" User interface for setting the update time interval for each refreshing
 if !exists('g:SrcExpl_refreshTime')
     let g:SrcExpl_refreshTime = 100
 endif
@@ -251,7 +254,7 @@ function! g:SrcExpl_UpdateTags()
     else
         " Prompt the whole path of the tags file
         echohl Question
-            " In the current directory
+            " Is the tags file in the current directory ?
             if tagfiles()[0] ==# "tags"
                 echo "SrcExpl: Updating 'tags' file in (". expand('%:p:h') . ")"
             " Up to other directories
@@ -348,7 +351,7 @@ function! g:SrcExpl_Jump()
         " Get the cursor line number
         let s:SrcExpl_csrLine = line(".")
         " Try to tag the symbol again
-        let l:expr = '\<' . s:SrcExpl_symbol . '\>\C'
+        let l:expr = '\<' . s:SrcExpl_symbol . '\>' . '\C'
         " Try to tag something
         call <SID>SrcExpl_TagSth(l:expr)
     endif
@@ -388,9 +391,7 @@ function! g:SrcExpl_Refresh()
         return -4
     endif
 
-    " call <SID>SrcExpl_Debug('s:SrcExpl_symbol is (' . s:SrcExpl_symbol . ')')
-
-    let l:expr = '\<' . s:SrcExpl_symbol . '\>\C'
+    let l:expr = '\<' . s:SrcExpl_symbol . '\>' . '\C'
 
     " Try to Go to local declaration
     if g:SrcExpl_searchLocalDef != 0
@@ -426,27 +427,6 @@ function! <SID>SrcExpl_AdaptPlugins()
 
     " Safe
     return 0
-
-endfunction " }}}
-
-" SrcExpl_Debug() {{{
-
-" Record the supplied debug information log along with the time
-
-function! <SID>SrcExpl_Debug(log)
-
-    " Debug switch is on
-    if s:SrcExpl_isDebug == 1
-        " Log file path is valid
-        if s:SrcExpl_logPath != ''
-            " Output to the log file
-            echo s:SrcExpl_logPath
-            exe "redir >> " . s:SrcExpl_logPath
-            " Add the current time
-            silent echon strftime("%H:%M:%S") . ": " . a:log . "\n"
-            redir END
-        endif
-    endif
 
 endfunction " }}}
 
@@ -684,7 +664,7 @@ function! <SID>SrcExpl_MatchExpr()
     call search("$", "b")
     let s:SrcExpl_symbol = substitute(s:SrcExpl_symbol, 
         \ '\\', '\\\\', '')
-    call search('\V\C\<' . s:SrcExpl_symbol . '\>')
+    call search('\<' . s:SrcExpl_symbol . '\>' . '\C')
 
 endfunction " }}}
 
@@ -722,7 +702,7 @@ function! <SID>SrcExpl_PromptNoDef()
         " can not point to the definition
         " Delete all lines in buffer.
         1,$d _
-        " Goto the end of the buffer put the buffer list
+        " Go to the end of the buffer put the buffer list
         $
         " Display the version of the Source Explorer
         put! ='Definition Not Found'
@@ -755,6 +735,21 @@ function! <SID>SrcExpl_ListMultiDefs(list, len)
         let l:wcmd = '+buffer' . l:bufnum
     endif
 
+    " Is the tags file in the current directory ?
+    if tagfiles()[0] ==# "tags"
+        " We'll get the operating system environment 
+        " in order to judge the slash type
+        if s:SrcExpl_isWinOS == 1
+            " With the backward slash
+            let l:path = expand('%:p:h') . '\'
+        else
+            " With the forward slash
+            let l:path = expand('%:p:h') . '/'
+        endif
+    else
+        let l:path = ''
+    endif
+
     " Reopen the Source Explorer idle window
     exe "silent " . "pedit " . l:wcmd
     " Return to the preview window
@@ -784,13 +779,16 @@ function! <SID>SrcExpl_ListMultiDefs(list, len)
             let l:dict = get(a:list, l:indx, {})
             " There is one tag
             if l:dict != {}
-                " If or not the legal file
-                " if filereadable(l:dict['filename'])
-                    " Goto the end of the buffer put the buffer list
-                    $
-                    put! ='[File Path]: '. l:dict['filename']
+                " Go to the end of the buffer put the buffer list
+                $
+                " We should avoid the './' or '.\' in the whole file path
+                if l:dict['filename'][0] == '.'
+                    put! ='[File Path]: ' . l:path . l:dict['filename'][2:]
                         \ . ' ' . '[EX Command]: ' . l:dict['cmd']
-                " endif
+                else
+                    put! ='[File Path]: ' . l:path . l:dict['filename']
+                        \ . ' ' . '[EX Command]: ' . l:dict['cmd']
+                endif
             " Traversal finished
             else
                 break
@@ -818,7 +816,7 @@ function! <SID>SrcExpl_ViewOneDef(fpath, excmd)
 
     let l:expr = ""
 
-    " In the current directory
+    " Is the tags file in the current directory ?
     if tagfiles()[0] ==# "tags"
         exe "silent " . "pedit " . expand('%:p:h') . '/' . a:fpath
     " Up to other directories
@@ -1081,26 +1079,35 @@ endfunction " }}}
 
 function! <SID>SrcExpl_InitGlbVal()
 
+    " We'll get the operating system environment 
+    " in order to judge the slash type (backward 
+    " or forward)
+    if has("win16") || has("win32") 
+        \ || has("win64")
+        let s:SrcExpl_isWinOS = 1
+    else
+        let s:SrcExpl_isWinOS = 0
+    endif
+    " Have we jumped to the main editor window ?
+    let s:SrcExpl_isJumped    = 0
+    " Line number of the current cursor
+    let s:SrcExpl_csrLine     = 0
+    " The ID of main editor window
+    let s:SrcExpl_editWin     = 0
+    " The tab page number
+    let s:SrcExpl_tabPage     = 0
     " Source Explorer status:
     " 0: Definition not found
     " 1: Only one definition 
     " 2: Multiple definitions
     " 3: Local declaration
-    let s:SrcExpl_status   = 0
-    " Line number of the current cursor
-    let s:SrcExpl_csrLine  = 0
-    " The ID of main editor window
-    let s:SrcExpl_editWin  = 0
-    " The tab page number
-    let s:SrcExpl_tabPage  = 0
-    " Have we jumped to the main editor window ?
-    let s:SrcExpl_isJumped = 0
+    let s:SrcExpl_status      = 0
     " The mark for the current position
-    let s:SrcExpl_currMark = []
+    let s:SrcExpl_currMark    = []
     " The mark list for exploring the source code
-    let s:SrcExpl_markList = []
+    let s:SrcExpl_markList    = []
     " The key word symbol for exploring
-    let s:SrcExpl_symbol   = ''
+    let s:SrcExpl_symbol      = ''
 
 endfunction " }}}
 
@@ -1152,10 +1159,10 @@ function! <SID>SrcExpl_OpenWin()
         setlocal buftype=nofile
         " Delete all lines in buffer
         1,$d _
-        " Goto the end of the buffer
+        " Go to the end of the buffer
         $
         " Display the version of the Source Explorer
-        put! ='Source Explorer V4.0'
+        put! ='Source Explorer v4.1'
         " Delete the extra trailing blank line
         $ d _
         " Make it no modifiable
