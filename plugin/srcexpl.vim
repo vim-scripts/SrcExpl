@@ -6,8 +6,8 @@
 "              and 'quickfix'. It works like the context window in 'Source     "
 "              Insight'.                                                       "
 " Author_____: Wenlong Che <chewenlong AT buaa.edu.cn>                         "
-" Version____: 4.1                                                             "
-" Last_Change: March 12, 2009                                                  "
+" Version____: 4.2                                                             "
+" Last_Change: March 16, 2009                                                  "
 " Licence____: This program is free software; you can redistribute it and / or "
 "              modify it under the terms of the GNU General Public License as  "
 "              published by the Free Software Foundation; either version 2, or "
@@ -38,7 +38,7 @@
 " |~               |~        \__________________\|           |~                |
 " |~               |~                                        |~                |
 " |-__Tag_List__---|-demo.c----------------------------------|-_NERD_tree_-----|
-" |Source Explorer v4.1                                                        |
+" |Source Explorer v4.2                                                        |
 " |~                              +-----------------+                          |
 " |~                              | Source Explorer |\                         |
 " |~                              +_________________+ |                        |
@@ -87,8 +87,8 @@
 " // update a tags file                                                        "
 " let g:SrcExpl_updateTagsCmd = "ctags --sort=foldcase -R ."
 "                                                                              "
-" // Set "<F10>" key for updating the tags file artificially                   "
-" let g:SrcExpl_updateTagsKey = "<F10>"
+" // Set "<F12>" key for updating the tags file artificially                   "
+" let g:SrcExpl_updateTagsKey = "<F12>"
 "                                                                              "
 " Just_change_above_of_them_by_yourself:-)                                     "
 "                                                                              "
@@ -197,14 +197,8 @@ endif
 " Buffer caption for identifying myself among all the plugins
 let s:SrcExpl_pluginCaption = 'Source_Explorer'
 
-" The log file path for debugging the error
-let s:SrcExpl_logPath       = './srcexpl.log'
-
-" Debug switch for logging the debug information
-let s:SrcExpl_isDebug       = 0
-
 " Plugin switch flag
-let s:SrcExpl_isRunning     = 0
+let s:SrcExpl_isRunning = 0
 
 " }}}
 
@@ -252,24 +246,29 @@ function! g:SrcExpl_UpdateTags()
         return -3
     " Found one successfully
     else
-        " Prompt the whole path of the tags file
-        echohl Question
-            " Is the tags file in the current directory ?
-            if tagfiles()[0] ==# "tags"
+        " Is the tags file in the current directory ?
+        if tagfiles()[0] ==# "tags"
+            " Prompt the current work directory
+            echohl Question
                 echo "SrcExpl: Updating 'tags' file in (". expand('%:p:h') . ")"
-            " Up to other directories
-            else
+            echohl None
+            " Call the external 'ctags' utility program
+            exe "!" . g:SrcExpl_updateTagsCmd
+        " Up to other directories
+        else
+            " Prompt the whole path of the tags file
+            echohl Question
                 echo "SrcExpl: Updating 'tags' file in (". tagfiles()[0][:-6] . ")"
-            endif
-        echohl None
-        " Store the current word directory at first
-        let l:tmp = getcwd()
-        " Go to the directory that contains the old tags file
-        silent! exe "cd " . tagfiles()[0][:-5]
-        " Call the external 'ctags' utility program
-        exe "!" . g:SrcExpl_updateTagsCmd
-        " Go back to the original work directory
-        silent! exe "cd " . l:tmp
+            echohl None
+            " Store the current word directory at first
+            let l:tmp = getcwd()
+            " Go to the directory that contains the old tags file
+            silent! exe "cd " . tagfiles()[0][:-5]
+            " Call the external 'ctags' utility program
+            exe "!" . g:SrcExpl_updateTagsCmd
+           " Go back to the original work directory
+           silent! exe "cd " . l:tmp
+        endif
     endif
 
     " Done
@@ -1089,25 +1088,25 @@ function! <SID>SrcExpl_InitGlbVal()
         let s:SrcExpl_isWinOS = 0
     endif
     " Have we jumped to the main editor window ?
-    let s:SrcExpl_isJumped    = 0
+    let s:SrcExpl_isJumped = 0
     " Line number of the current cursor
-    let s:SrcExpl_csrLine     = 0
+    let s:SrcExpl_csrLine = 0
     " The ID of main editor window
-    let s:SrcExpl_editWin     = 0
+    let s:SrcExpl_editWin = 0
     " The tab page number
-    let s:SrcExpl_tabPage     = 0
+    let s:SrcExpl_tabPage = 0
     " Source Explorer status:
     " 0: Definition not found
     " 1: Only one definition 
     " 2: Multiple definitions
     " 3: Local declaration
-    let s:SrcExpl_status      = 0
+    let s:SrcExpl_status = 0
     " The mark for the current position
-    let s:SrcExpl_currMark    = []
+    let s:SrcExpl_currMark = []
     " The mark list for exploring the source code
-    let s:SrcExpl_markList    = []
+    let s:SrcExpl_markList = []
     " The key word symbol for exploring
-    let s:SrcExpl_symbol      = ''
+    let s:SrcExpl_symbol = ''
 
 endfunction " }}}
 
@@ -1162,7 +1161,7 @@ function! <SID>SrcExpl_OpenWin()
         " Go to the end of the buffer
         $
         " Display the version of the Source Explorer
-        put! ='Source Explorer v4.1'
+        put! ='Source Explorer v4.2'
         " Delete the extra trailing blank line
         $ d _
         " Make it no modifiable
@@ -1282,7 +1281,7 @@ function! <SID>SrcExpl_Toggle()
     else
         " Not in the exact tab page
         if s:SrcExpl_tabPage != tabpagenr()
-            call <SID>SrcExpl_ReportErr("Not support multiple tab pages for now")
+            call <SID>SrcExpl_ReportErr("Not support multiple tab pages")
             return -2
         endif
         " Set the switch flag off
@@ -1310,7 +1309,7 @@ function! <SID>SrcExpl_Close()
     if s:SrcExpl_isRunning == 1
         " Not in the exact tab page
         if s:SrcExpl_tabPage != tabpagenr()
-            call <SID>SrcExpl_ReportErr("Not support multiple tab pages for now")
+            call <SID>SrcExpl_ReportErr("Not support multiple tab pages")
             return -1
         endif
         " Close the window
@@ -1349,7 +1348,7 @@ function! <SID>SrcExpl()
     else
         " Not in the exact tab page
         if s:SrcExpl_tabPage != tabpagenr()
-            call <SID>SrcExpl_ReportErr("Not support multiple tab pages for now")
+            call <SID>SrcExpl_ReportErr("Not support multiple tab pages")
             return -2
         endif
         " Already running
