@@ -5,9 +5,9 @@
 " Abstract___: A (G)VIM plugin for exploring the source code based on 'tags'   "
 "              and 'quickfix'. It works like the context window in 'Source     "
 "              Insight'.                                                       "
-" Author_____: Wenlong Che <chewenlong AT buaa.edu.cn>                         "
-" Version____: 4.2                                                             "
-" Last_Change: March 16, 2009                                                  "
+" Author_____: Wenlong Che <wenlong.che@gmail.com>                             "
+" Version____: 4.3                                                             "
+" Last_Change: October 6, 2010                                                 "
 " Licence____: This program is free software; you can redistribute it and / or "
 "              modify it under the terms of the GNU General Public License as  "
 "              published by the Free Software Foundation; either version 2, or "
@@ -38,7 +38,7 @@
 " |~               |~        \__________________\|           |~                |
 " |~               |~                                        |~                |
 " |-__Tag_List__---|-demo.c----------------------------------|-_NERD_tree_-----|
-" |Source Explorer v4.2                                                        |
+" |Source Explorer V4.3                                                        |
 " |~                              +-----------------+                          |
 " |~                              | Source Explorer |\                         |
 " |~                              +_________________+ |                        |
@@ -83,8 +83,8 @@
 " // Do not let the Source Explorer update the tags file when opening          "
 " let g:SrcExpl_isUpdateTags = 0
 "                                                                              "
-" // Use program 'ctags' with argument '--sort=foldcase -R' to create or       "
-" // update a tags file                                                        "
+" // Use 'Exuberant Ctags' with '--sort=foldcase -R .' or '-L cscope.files' to "
+" //  create/update a tags file                                                "
 " let g:SrcExpl_updateTagsCmd = "ctags --sort=foldcase -R ."
 "                                                                              "
 " // Set "<F12>" key for updating the tags file artificially                   "
@@ -124,17 +124,17 @@ set cpoptions&vim
 
 " User interface for opening the Source Explorer
 
-command! -nargs=0 -bar SrcExpl 
+command! -nargs=0 -bar SrcExpl
     \ call <SID>SrcExpl()
 
 " User interface for closing the Source Explorer
 
-command! -nargs=0 -bar SrcExplClose 
+command! -nargs=0 -bar SrcExplClose
     \ call <SID>SrcExpl_Close()
 
 " User interface for switching the Source Explorer
 
-command! -nargs=0 -bar SrcExplToggle 
+command! -nargs=0 -bar SrcExplToggle
     \ call <SID>SrcExpl_Toggle()
 
 " User interface for changing the height of the Source Explorer window
@@ -157,23 +157,23 @@ if !exists('g:SrcExpl_gobackKey')
     let g:SrcExpl_gobackKey = '<SPACE>'
 endif
 
-" User interface for handling the conflicts between the 
+" User interface for handling the conflicts between the
 " Source Explorer and other plugins
 if !exists('g:SrcExpl_pluginList')
     let g:SrcExpl_pluginList = [
-            \ "__Tag_List__", 
-            \ "_NERD_tree_", 
+            \ "__Tag_List__",
+            \ "_NERD_tree_",
             \ "Source_Explorer"
         \ ]
 endif
 
-" User interface to enable local declaration searching 
+" User interface to enable local declaration searching
 " according to command 'gd'
 if !exists('g:SrcExpl_searchLocalDef')
     let g:SrcExpl_searchLocalDef = 1
 endif
 
-" User interface to control if update the 'tags' file when loading 
+" User interface to control if update the 'tags' file when loading
 " the Source Explorer, 0 for false, others for true
 if !exists('g:SrcExpl_isUpdateTags')
     let g:SrcExpl_isUpdateTags = 1
@@ -210,7 +210,7 @@ function! g:SrcExpl_UpdateTags()
 
     " Go to the current work directory
     silent! exe "cd " . expand('%:p:h')
-    " Get the amount of tags files
+    " Get the amount of all files named 'tags'
     let l:tmp = len(tagfiles())
 
     " No tags file or not found one
@@ -219,7 +219,7 @@ function! g:SrcExpl_UpdateTags()
         echohl Question
             \ | let l:tmp = <SID>SrcExpl_GetInput("\nSrcExpl: "
                 \ . "The 'tags' file was not found in your PATH.\n"
-            \ . "Create one in the current directory now? (y)es/(n)o?") | 
+            \ . "Create one in the current directory now? (y)es/(n)o?") |
         echohl None
         " They do
         if l:tmp == "y" || l:tmp == "yes"
@@ -271,7 +271,6 @@ function! g:SrcExpl_UpdateTags()
         endif
     endif
 
-    " Done
     return 0
 
 endfunction " }}}
@@ -298,7 +297,7 @@ endfunction " }}}
 
 function! g:SrcExpl_Jump()
 
-    " Only do the operation on the Source Explorer 
+    " Only do the operation on the Source Explorer
     " window is valid
     if !&previewwindow
         return -1
@@ -355,7 +354,6 @@ function! g:SrcExpl_Jump()
         call <SID>SrcExpl_TagSth(l:expr)
     endif
 
-    " Done
     return 0
 
 endfunction " }}}
@@ -402,14 +400,13 @@ function! g:SrcExpl_Refresh()
     " Try to tag something
     call <SID>SrcExpl_TagSth(l:expr)
 
-    " Done
     return 0
 
 endfunction " }}}
 
 " SrcExpl_AdaptPlugins() {{{
 
-" The Source Explorer window will not work when the cursor on the 
+" The Source Explorer window will not work when the cursor on the
 
 " window of other plugins, such as 'Taglist', 'NERD tree' etc.
 
@@ -455,18 +452,18 @@ function! <SID>SrcExpl_EnterWin()
             silent! nunmenu 1.01 PopUp.&SrcExplGoBack
         endif
         " Unmap the go-back key
-        if maparg(g:SrcExpl_gobackKey, 'n') == 
+        if maparg(g:SrcExpl_gobackKey, 'n') ==
             \ ":call g:SrcExpl_GoBack()<CR>"
             exe "nunmap " . g:SrcExpl_gobackKey
         endif
         " Do the mapping for 'double-click'
         if maparg('<2-LeftMouse>', 'n') == ''
-            nnoremap <silent> <2-LeftMouse> 
+            nnoremap <silent> <2-LeftMouse>
                 \ :call g:SrcExpl_Jump()<CR>
         endif
         " Map the user's key to jump into the exact definition context
         if g:SrcExpl_jumpKey != ""
-            exe "nnoremap " . g:SrcExpl_jumpKey . 
+            exe "nnoremap " . g:SrcExpl_jumpKey .
                 \ " :call g:SrcExpl_Jump()<CR>"
         endif
     " In other plugin windows
@@ -476,17 +473,17 @@ function! <SID>SrcExpl_EnterWin()
             silent! nunmenu 1.01 PopUp.&SrcExplGoBack
         endif
         " Unmap the go-back key
-        if maparg(g:SrcExpl_gobackKey, 'n') == 
+        if maparg(g:SrcExpl_gobackKey, 'n') ==
             \ ":call g:SrcExpl_GoBack()<CR>"
             exe "nunmap " . g:SrcExpl_gobackKey
         endif
         " Unmap the exact mapping of 'double-click'
-        if maparg("<2-LeftMouse>", "n") == 
+        if maparg("<2-LeftMouse>", "n") ==
                 \ ":call g:SrcExpl_Jump()<CR>"
             nunmap <silent> <2-LeftMouse>
         endif
         " Unmap the jump key
-        if maparg(g:SrcExpl_jumpKey, 'n') == 
+        if maparg(g:SrcExpl_jumpKey, 'n') ==
             \ ":call g:SrcExpl_Jump()<CR>"
             exe "nunmap " . g:SrcExpl_jumpKey
         endif
@@ -495,21 +492,21 @@ function! <SID>SrcExpl_EnterWin()
         if has("gui_running")
             " You can use SrcExplGoBack item in Popup menu
             " to go back from the definition
-            silent! nnoremenu 1.01 PopUp.&SrcExplGoBack 
+            silent! nnoremenu 1.01 PopUp.&SrcExplGoBack
                 \ :call g:SrcExpl_GoBack()<CR>
         endif
         " Map the user's key to go back from the definition context
         if g:SrcExpl_gobackKey != ""
-            exe "nnoremap " . g:SrcExpl_gobackKey . 
+            exe "nnoremap " . g:SrcExpl_gobackKey .
                 \ " :call g:SrcExpl_GoBack()<CR>"
         endif
         " Unmap the exact mapping of 'double-click'
-        if maparg("<2-LeftMouse>", "n") == 
+        if maparg("<2-LeftMouse>", "n") ==
                 \ ":call g:SrcExpl_Jump()<CR>"
             nunmap <silent> <2-LeftMouse>
         endif
         " Unmap the jump key
-        if maparg(g:SrcExpl_jumpKey, 'n') == 
+        if maparg(g:SrcExpl_jumpKey, 'n') ==
             \ ":call g:SrcExpl_Jump()<CR>"
             exe "nunmap " . g:SrcExpl_jumpKey
         endif
@@ -541,7 +538,7 @@ function! <SID>SrcExpl_GetMarkList()
     endif
 
     " Avoid the same situation
-    if get(s:SrcExpl_markList, -1)[0] == expand("%:p") 
+    if get(s:SrcExpl_markList, -1)[0] == expand("%:p")
       \ && get(s:SrcExpl_markList, -1)[1] == line(".")
       \ && get(s:SrcExpl_markList, -1)[2] == col(".")
         " Remove the latest mark
@@ -557,7 +554,6 @@ function! <SID>SrcExpl_GetMarkList()
     " Remove the latest mark now
     call remove(s:SrcExpl_markList, -1)
 
-    " Done
     return 0
 
 endfunction " }}}
@@ -581,28 +577,28 @@ function! <SID>SrcExpl_SelToJump()
     " Get the item data that the user selected just now
     let l:list = getline(".")
     " Traverse the prompt string until get the file path
-    while !((l:list[l:index] == ']') && 
+    while !((l:list[l:index] == ']') &&
         \ (l:list[l:index + 1] == ':'))
         let l:index += 1
     endwhile
-    " Done
+    " Offset
     let l:index += 3
 
     " Get the whole file path of the exact definition
-    while !((l:list[l:index] == ' ') && 
+    while !((l:list[l:index] == ' ') &&
         \ (l:list[l:index + 1] == '['))
         let l:fpath = l:fpath . l:list[l:index]
         let l:index += 1
     endwhile
-    " Done
+    " Offset
     let l:index += 2
 
     " Traverse the prompt string until get the symbol
-    while !((l:list[l:index] == ']') && 
+    while !((l:list[l:index] == ']') &&
         \ (l:list[l:index + 1] == ':'))
         let l:index += 1
     endwhile
-    " Done
+    " Offset
     let l:index += 3
 
     " Get the EX command string
@@ -649,7 +645,7 @@ function! <SID>SrcExpl_ColorExpr()
     " Set the highlight color
     hi SrcExpl_HighLight term=bold guifg=Black guibg=Magenta ctermfg=Black ctermbg=Magenta
     " Highlight this
-    exe 'match SrcExpl_HighLight "\%' . line(".") . 'l\%' . 
+    exe 'match SrcExpl_HighLight "\%' . line(".") . 'l\%' .
         \ col(".") . 'c\k*"'
 
 endfunction " }}}
@@ -661,7 +657,7 @@ endfunction " }}}
 function! <SID>SrcExpl_MatchExpr()
 
     call search("$", "b")
-    let s:SrcExpl_symbol = substitute(s:SrcExpl_symbol, 
+    let s:SrcExpl_symbol = substitute(s:SrcExpl_symbol,
         \ '\\', '\\\\', '')
     call search('\<' . s:SrcExpl_symbol . '\>' . '\C')
 
@@ -688,7 +684,6 @@ function! <SID>SrcExpl_PromptNoDef()
     exe "silent " . "pedit " . l:wcmd
     " Move to it
     silent! wincmd P
-
     " Done
     if &previewwindow
         " First make it modifiable
@@ -736,7 +731,7 @@ function! <SID>SrcExpl_ListMultiDefs(list, len)
 
     " Is the tags file in the current directory ?
     if tagfiles()[0] ==# "tags"
-        " We'll get the operating system environment 
+        " We'll get the operating system environment
         " in order to judge the slash type
         if s:SrcExpl_isWinOS == 1
             " With the backward slash
@@ -751,7 +746,7 @@ function! <SID>SrcExpl_ListMultiDefs(list, len)
 
     " Reopen the Source Explorer idle window
     exe "silent " . "pedit " . l:wcmd
-    " Return to the preview window
+    " Move to it
     silent! wincmd P
     " Done
     if &previewwindow
@@ -785,8 +780,15 @@ function! <SID>SrcExpl_ListMultiDefs(list, len)
                     put! ='[File Path]: ' . l:path . l:dict['filename'][2:]
                         \ . ' ' . '[EX Command]: ' . l:dict['cmd']
                 else
-                    put! ='[File Path]: ' . l:path . l:dict['filename']
-                        \ . ' ' . '[EX Command]: ' . l:dict['cmd']
+                    " Generated by 'ctags --sort=foldcase -R .'
+                    if len(l:path) == 0
+                        put! ='[File Path]: ' . l:path . l:dict['filename']
+                    	    \ . ' ' . '[EX Command]: ' . l:dict['cmd']
+                    " Generated by 'ctags -L cscope.files'
+                    else
+                        put! ='[File Path]: ' . l:dict['filename']
+                    	    \ . ' ' . '[EX Command]: ' . l:dict['cmd']
+                    endif
                 endif
             " Traversal finished
             else
@@ -815,8 +817,9 @@ function! <SID>SrcExpl_ViewOneDef(fpath, excmd)
 
     let l:expr = ""
 
-    " Is the tags file in the current directory ?
-    if tagfiles()[0] ==# "tags"
+    " The tags file is in the current directory and it
+    " should be generated by 'ctags --sort=foldcase -R .'
+    if tagfiles()[0] ==# "tags" && a:fpath[0] == '.'
         exe "silent " . "pedit " . expand('%:p:h') . '/' . a:fpath
     " Up to other directories
     else
@@ -854,7 +857,7 @@ endfunction " }}}
 
 function! <SID>SrcExpl_TagSth(expr)
 
-    let l:len = -1 
+    let l:len = -1
 
     " Is the symbol valid ?
     if a:expr != '\<\>\C'
@@ -932,7 +935,6 @@ function! <SID>SrcExpl_GoDecl(expr)
         let s:SrcExpl_status = 3
     endif
 
-    " Done
     return 0
 
 endfunction " }}}
@@ -985,7 +987,6 @@ function! <SID>SrcExpl_GetSymbol()
         endif
     endif
 
-    " Done
     return 0
 
 endfunction " }}}
@@ -1078,10 +1079,10 @@ endfunction " }}}
 
 function! <SID>SrcExpl_InitGlbVal()
 
-    " We'll get the operating system environment 
-    " in order to judge the slash type (backward 
+    " We'll get the operating system environment
+    " in order to judge the slash type (backward
     " or forward)
-    if has("win16") || has("win32") 
+    if has("win16") || has("win32")
         \ || has("win64")
         let s:SrcExpl_isWinOS = 1
     else
@@ -1097,7 +1098,7 @@ function! <SID>SrcExpl_InitGlbVal()
     let s:SrcExpl_tabPage = 0
     " Source Explorer status:
     " 0: Definition not found
-    " 1: Only one definition 
+    " 1: Only one definition
     " 2: Multiple definitions
     " 3: Local declaration
     let s:SrcExpl_status = 0
@@ -1161,7 +1162,7 @@ function! <SID>SrcExpl_OpenWin()
         " Go to the end of the buffer
         $
         " Display the version of the Source Explorer
-        put! ='Source Explorer v4.2'
+        put! ='Source Explorer V4.3'
         " Delete the extra trailing blank line
         $ d _
         " Make it no modifiable
@@ -1193,19 +1194,19 @@ function! <SID>SrcExpl_CleanUp()
     endif
 
     " Unmap the jump key
-    if maparg(g:SrcExpl_jumpKey, 'n') == 
+    if maparg(g:SrcExpl_jumpKey, 'n') ==
         \ ":call g:SrcExpl_Jump()<CR>"
         exe "nunmap " . g:SrcExpl_jumpKey
     endif
 
     " Unmap the go-back key
-    if maparg(g:SrcExpl_gobackKey, 'n') == 
+    if maparg(g:SrcExpl_gobackKey, 'n') ==
         \ ":call g:SrcExpl_GoBack()<CR>"
         exe "nunmap " . g:SrcExpl_gobackKey
     endif
 
     " Unmap the update-tags key
-    if maparg(g:SrcExpl_updateTagsKey, 'n') == 
+    if maparg(g:SrcExpl_updateTagsKey, 'n') ==
         \ ":call g:SrcExpl_UpdateTags()<CR>"
         exe "nunmap " . g:SrcExpl_updateTagsKey
     endif
@@ -1246,7 +1247,7 @@ function! <SID>SrcExpl_Init()
     endif
 
     if g:SrcExpl_updateTagsKey != ""
-        exe "nnoremap " . g:SrcExpl_updateTagsKey . 
+        exe "nnoremap " . g:SrcExpl_updateTagsKey .
             \ " :call g:SrcExpl_UpdateTags()<CR>"
     endif
 
@@ -1257,7 +1258,6 @@ function! <SID>SrcExpl_Init()
         au! WinEnter * nested call <SID>SrcExpl_EnterWin()
     augroup end
 
-    " Done
     return 0
 
 endfunction " }}}
@@ -1294,7 +1294,6 @@ function! <SID>SrcExpl_Toggle()
         let s:SrcExpl_isRunning = 0
     endif
 
-    " Done
     return 0
 
 endfunction " }}}
@@ -1324,7 +1323,6 @@ function! <SID>SrcExpl_Close()
         return -2
     endif
 
-    " Done
     return 0
 
 endfunction " }}}
@@ -1356,7 +1354,6 @@ function! <SID>SrcExpl()
         return -3
     endif
 
-    " Done
     return 0
 
 endfunction " }}}
