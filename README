@@ -49,12 +49,17 @@ http://www.vim.org/scripts/script.php?script_id=2347
 
 This simple plugin can manage 'Source Explorer', 'Taglist' and 'NERD Tree' work together very well.
 
-If you want to use VIM with Source Explorer in the UNIXs-console, I suggest map the keys below to jump from one window to another:
+If you want to use VIM with Source Explorer in the UNIXs-console, I suggest map the keys below to jump from one window to another.
 
 nmap <C-H> <C-W>h
 nmap <C-J> <C-W>j
 nmap <C-K> <C-W>k
 nmap <C-L> <C-W>l
+
+Below key mappings can replace the Vim feature for jumping to previously visited locations via jump list.
+
+nmap <C-I> <C-W>j:call g:SrcExpl_Jump()<CR>
+nmap <C-O> :call g:SrcExpl_GoBack()<CR>
 
 The typical actions using srcexpl.vim are: 
 
@@ -64,4 +69,3 @@ c\ Type the SrcExpl_jumpKey(<ENTER> as default) to jump to the exact context of 
 d\ Type the SrcExpl_gobackKey(<SPACE> as default) to go back to the previous position of the symbol word.
 
 There are some screenshots on the website: http://srcexpl.blogspot.com/
-
