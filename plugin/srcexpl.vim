@@ -1,13 +1,12 @@
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 "                                                                              "
-" File_Name__: srcexpl.vim                                                     "
-" Abstract___: A (G)VIM plugin for exploring the source code based on 'tags'   "
-"              and 'quickfix'. It works like the context window in 'Source     "
-"              Insight'.                                                       "
+" File_Name__: Source Explorer (srcexpl.vim)                                   "
+" Abstract___: A (G)VIM plugin for exploring the source code based on tags and "
+"              quickfix. It works like the context window of "Source Insight". "
 " Author_____: Wenlong Che <wenlong.che@gmail.com>                             "
-" Version____: 4.4                                                             "
-" Last_Change: July 30th, 2012                                                 "
+" Version____: 4.5                                                             "
+" Last_Change: August 1st, 2012                                                "
 " Licence____: This program is free software; you can redistribute it and / or "
 "              modify it under the terms of the GNU General Public License as  "
 "              published by the Free Software Foundation; either version 2, or "
@@ -38,7 +37,7 @@
 " |~               |~        \__________________\|           |~                |
 " |~               |~                                        |~                |
 " |-__Tag_List__---|-demo.c----------------------------------|-_NERD_tree_-----|
-" |Source Explorer V4.4                                                        |
+" |Source Explorer v4.5                                                        |
 " |~                              +-----------------+                          |
 " |~                              | Source Explorer |\                         |
 " |~                              +_________________+ |                        |
@@ -840,14 +839,23 @@ function! <SID>SrcExpl_ViewOneDef(fpath, excmd)
         let l:expr = substitute(l:expr,  '\]',  '\\\]', 'g')
         " Execute EX command according to the parameter
         silent! exe l:expr
+
         " Match the symbol
         call <SID>SrcExpl_MatchExpr()
         " Highlight the symbol
         call <SID>SrcExpl_ColorExpr()
         " Set the current buf-win attribute
         call <SID>SrcExpl_SetCurrMark()
-        " Refresh all the screen
+
+        " Not highlight the word that had been searched.
+        " Because execute EX command will active a search event
+        let l:hlsearch = &hlsearch
+        set nohlsearch
+        " Refresh the screen
         redraw
+        " Resotre the original setting for the highlight
+        let &hlsearch = l:hlsearch
+
         " Go back to the main editor window
         silent! exe s:SrcExpl_editWin . "wincmd w"
     endif
@@ -1046,72 +1054,6 @@ function! <SID>SrcExpl_GetEditWin()
 
 endfunction " }}}
 
-" SrcExpl_InitVimEnv() {{{
-
-" Initialize Vim environment
-
-function! <SID>SrcExpl_InitVimEnv()
-
-    " Not highlight the word that had been searched
-    " Because execute EX command will active a search event
-    exe "set nohlsearch"
-    " Auto change current work directory
-    exe "set autochdir"
-    " Let Vim find the possible tags file
-    exe "set tags=tags;"
-
-    " First set the height of preview window
-    exe "set previewheight=". string(g:SrcExpl_winHeight)
-    " Set the actual update time according to user's requirement
-    " 100 milliseconds by default
-    exe "set updatetime=" . string(g:SrcExpl_refreshTime)
-
-    " Open all the folds
-    if has("folding")
-        " Open this file at first
-        exe "normal " . "zR"
-        " Let it works during the whole editing session
-        exe "set foldlevelstart=" . "99"
-    endif
-
-endfunction " }}}
-
-" SrcExpl_InitGlbVal() {{{
-
-" Initialize global variables
-
-function! <SID>SrcExpl_InitGlbVal()
-
-    " We'll get the operating system environment
-    " in order to judge the slash type (backward
-    " or forward)
-    if has("win16") || has("win32")
-        \ || has("win64")
-        let s:SrcExpl_isWinOS = 1
-    else
-        let s:SrcExpl_isWinOS = 0
-    endif
-    " Have we jumped to the main editor window ?
-    let s:SrcExpl_isJumped = 0
-    " Line number of the current cursor
-    let s:SrcExpl_csrLine = 0
-    " The ID of main editor window
-    let s:SrcExpl_editWin = 0
-    " The tab page number
-    let s:SrcExpl_tabPage = 0
-    " Source Explorer status:
-    " 0: Definition not found
-    " 1: Only one definition
-    " 2: Multiple definitions
-    " 3: Local declaration
-    let s:SrcExpl_status = 0
-    " The mark for the current position
-    let s:SrcExpl_currMark = []
-    " The key word symbol for exploring
-    let s:SrcExpl_symbol = ''
-
-endfunction " }}}
-
 " SrcExpl_CloseWin() {{{
 
 " Close the Source Explorer window
@@ -1163,7 +1105,7 @@ function! <SID>SrcExpl_OpenWin()
         " Go to the end of the buffer
         $
         " Display the version of the Source Explorer
-        put! ='Source Explorer V4.4'
+        put! = 'Source Explorer v4.5'
         " Delete the extra trailing blank line
         $ d _
         " Make it no modifiable
@@ -1223,11 +1165,50 @@ endfunction " }}}
 
 function! <SID>SrcExpl_Init()
 
-    " Initialize script global variables
-    call <SID>SrcExpl_InitGlbVal()
+    " We'll get the operating system environment in order to
+    " judge the slash type (backward or forward)
+    if has("win16") || has("win32") || has("win64")
+        let s:SrcExpl_isWinOS = 1
+    else
+        let s:SrcExpl_isWinOS = 0
+    endif
 
-    " Initialize Vim environment
-    call <SID>SrcExpl_InitVimEnv()
+    " Have we jumped to the main editor window ?
+    let s:SrcExpl_isJumped = 0
+    " Line number of the current cursor
+    let s:SrcExpl_csrLine = 0
+    " The ID of main editor window
+    let s:SrcExpl_editWin = 0
+    " The tab page number
+    let s:SrcExpl_tabPage = 0
+    " Source Explorer status:
+    " 0: Definition not found
+    " 1: Only one definition
+    " 2: Multiple definitions
+    " 3: Local declaration
+    let s:SrcExpl_status = 0
+    " The mark for the current position
+    let s:SrcExpl_currMark = []
+    " The key word symbol for exploring
+    let s:SrcExpl_symbol = ''
+
+    " Auto change current work directory
+    exe "set autochdir"
+    " Let Vim find the possible tags file
+    exe "set tags=tags;"
+    " First set the height of preview window
+    exe "set previewheight=" . string(g:SrcExpl_winHeight)
+    " Set the actual update time according to user's requirement
+    " 100 milliseconds by default
+    exe "set updatetime=" . string(g:SrcExpl_refreshTime)
+
+    " Open all the folds
+    if has("folding")
+        " Open this file at first
+        exe "normal " . "zR"
+        " Let it works during the whole editing session
+        exe "set foldlevelstart=" . "99"
+    endif
 
     " We must get the ID of main editor window
     let l:tmp = <SID>SrcExpl_GetEditWin()
