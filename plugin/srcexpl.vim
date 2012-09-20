@@ -1,13 +1,16 @@
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 "                                                                              "
-" File_Name__: Source Explorer (srcexpl.vim)                                   "
-" Abstract___: A (G)VIM plugin for exploring the source code based on tags and "
-"              quickfix. It works like the context window of "Source Insight". "
-" Author_____: Wenlong Che <wenlong.che@gmail.com>                             "
-" Version____: 4.5                                                             "
-" Last_Change: August 1st, 2012                                                "
-" Licence____: This program is free software; you can redistribute it and / or "
+" Plugin Name: SrcExpl (Source Explorer)                                       "
+" Abstract:    A (G)Vim plugin for exploring the source code based on "tags",  "
+"              and it works like the context window of "Source Insight".       "
+" Authors:     Wenlong Che <wenlong.che@gmail.com>                             "
+"              Jonathan Lai <laiks.jonathan@gmail.com>                         "
+" Homepage:    http://www.vim.org/scripts/script.php?script_id=2179            "
+" GitHub:      https://github.com/wesleyche/SrcExpl                            "
+" Version:     5.1                                                             "
+" Last Change: September 16th, 2012                                            "
+" Licence:     This program is free software; you can redistribute it and / or "
 "              modify it under the terms of the GNU General Public License as  "
 "              published by the Free Software Foundation; either version 2, or "
 "              any later version.                                              "
@@ -15,34 +18,31 @@
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-" NOTE: The graph below shows my work platform with some VIM plugins,          "
+" NOTE: Below graph shows my work platform with some Vim plugins,              "
 "       including 'Source Explorer', 'Taglist' and 'NERD tree'. And I usually  "
-"       use a plugin named 'trinity.vim' to manage them.                       "
+"       use my another plugin called 'trinity.vim' to manage them.             "
 "                                                                              "
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 
 " +----------------------------------------------------------------------------+
-" | File | Edit | Tools | Syntax | Buffers | Window | Help |                   |
-" +----------------------------------------------------------------------------+
-" |-demo.c-------- |-----------------------------------------|-/home/myprj/----|
+" | File  Edit  Tools  Syntax  Buffers  Window  Help                           |
+" +----------------+-----------------------------------------+-----------------+
+" |-demo.c---------|                                         |-/home/myprj/----|
 " |function        | 1 void foo(void)     /* function 1 */   ||~ src/          |
 " |  foo           | 2 {                                     || `-demo.c       |
 " |  bar           | 3 }                                     |`-tags           |
 " |                | 4 void bar(void)     /* function 2 */   |                 |
-" |~ +----------+  | 5 {                                     |~ +-----------+  |
-" |~ | Tag List |\ | 6 }                                     |~ | NERD Tree |\ |
-" |~ +__________+ ||~        +-----------------+             |~ +___________+ ||
-" |~ \___________\||~        | The Main Editor |\            |~ \____________\||
-" |~               |~        +_________________+ |           |~                |
-" |~               |~        \__________________\|           |~                |
-" |~               |~                                        |~                |
-" |-__Tag_List__---|-demo.c----------------------------------|-_NERD_tree_-----|
-" |Source Explorer v4.5                                                        |
-" |~                              +-----------------+                          |
+" |~ .----------.  | 5 {                                     |~ .-----------.  |
+" |~ | Tag List |\ | 6 }        .-------------.              |~ | NERD Tree |\ |
+" |~ .----------. ||~           | Edit Window |\             |~ .-----------. ||
+" |~ \___________\||~           .-------------. |            |~ \____________\||
+" |~               |~           \______________\|            |~                |
+" +-__Tag_List__---+-demo.c----------------------------------+-_NERD_tree_-----+
+" |Source Explorer v5.1           .-----------------.                          |
 " |~                              | Source Explorer |\                         |
-" |~                              +_________________+ |                        |
+" |~                              .-----------------. |                        |
 " |~                              \__________________\|                        |
-" |-Source_Explorer[Preview]---------------------------------------------------|
+" |-Source_Explorer------------------------------------------------------------|
 " |:TrinityToggleAll                                                           |
 " +----------------------------------------------------------------------------+
 
@@ -66,7 +66,7 @@
 " let g:SrcExpl_gobackKey = "<SPACE>"
 "                                                                              "
 " // In order to Avoid conflicts, the Source Explorer should know what plugins "
-" // are using buffers. And you need add their bufname into the list below     "
+" // are using buffers. And you need add their buffer names into below list    "
 " // according to the command ":buffers!"                                      "
 " let g:SrcExpl_pluginList = [
 "         \ "__Tag_List__",
@@ -104,13 +104,13 @@ let s:save_cpo = &cpoptions
 
 " }}}
 
-" VIM version control {{{
+" Vim version control {{{
 
-" The VIM version control for running the Source Explorer
+" The Vim version control for running the Source Explorer
 
 if v:version < 700
     echohl ErrorMsg
-        echo "SrcExpl: Require VIM 7.0 or above for running the Source Explorer."
+        echo "Require Vim 7.0 or above for running the Source Explorer."
     echohl None
     finish
 endif
@@ -181,7 +181,7 @@ endif
 " User interface to create a 'tags' file using exact ctags
 " utility, 'ctags --sort=foldcase -R .' as default
 if !exists('g:SrcExpl_updateTagsCmd')
-    let g:SrcExpl_updateTagsCmd = "ctags --sort=foldcase -R ."
+    let g:SrcExpl_updateTagsCmd = 'ctags --sort=foldcase -R .'
 endif
 
 " User interface to update tags file artificially
@@ -193,16 +193,73 @@ endif
 
 " Global variables {{{
 
-" The mark list for exploring the source code
+" Mark list
 let g:SrcExpl_markList = []
 
-" Buffer caption for identifying myself among all the plugins
-let s:SrcExpl_pluginCaption = 'Source_Explorer'
+" Plugin name
+let s:SrcExpl_pluginName = 'Source Explorer'
 
-" Plugin switch flag
+" Plugin version
+let s:SrcExpl_pluginVer = 5.1
+
+" Buffer name
+let s:SrcExpl_bufName = 'Source_Explorer'
+
+" Window name
+let s:SrcExpl_winName = 'SrcExpl'
+
+" Window variable
+let s:SrcExpl_winVar = -1
+
+" Debugging log path
+let s:SrcExpl_logPath = '~/srcexpl.log'
+
+" Debugging switch
+let s:SrcExpl_isDebug = 0
+
+" Runing switch flag
 let s:SrcExpl_isRunning = 0
 
 " }}}
+
+" SrcExpl_GetVer() {{{
+
+" Gets the Source Explorer version
+
+function! g:SrcExpl_GetVer()
+
+    return s:SrcExpl_pluginVer
+
+endfunction " }}}
+
+" SrcExpl_GetWin() {{{
+
+" Gets the Source Explorer window number (> 0), and
+
+" -1 means the Source Explorer window had been closed
+
+function! g:SrcExpl_GetWin()
+
+    if getwinvar(s:SrcExpl_winVar, s:SrcExpl_winName) == 1
+        return s:SrcExpl_winVar
+    endif
+
+    let srcexpl_win = -1
+    let i = 0
+
+    while i < winnr("$")
+        let i = i + 1
+        if getwinvar(i, s:SrcExpl_winName) == 1
+            let srcexpl_win = i
+            break
+        endif
+    endwhile
+
+    let s:SrcExpl_winVar = srcexpl_win
+    " call <SID>SrcExpl_Debug("s:SrcExpl_winVar is ". s:SrcExpl_winVar)
+    return srcexpl_win
+
+endfunction " }}}
 
 " SrcExpl_UpdateTags() {{{
 
@@ -279,12 +336,12 @@ endfunction " }}}
 
 " SrcExpl_GoBack() {{{
 
-" Move the cursor to the previous location in the mark history
+" Move the cursor to the previous location according to the mark history
 
 function! g:SrcExpl_GoBack()
 
-    " If or not the cursor is on the main editor window
-    if &previewwindow || <SID>SrcExpl_AdaptPlugins()
+    " If the cursor is not in the edit window
+    if <SID>SrcExpl_WinActive() || <SID>SrcExpl_AdaptPlugins()
         return -1
     endif
 
@@ -295,18 +352,18 @@ endfunction " }}}
 
 " SrcExpl_Jump() {{{
 
-" Jump to the main editor window and point to the definition
+" Jump to the edit window and point to the definition
 
 function! g:SrcExpl_Jump()
 
     " Only do the operation on the Source Explorer
     " window is valid
-    if !&previewwindow
+    if !<SID>SrcExpl_WinActive()
         return -1
     endif
 
     " Do we get the definition already?
-    if bufname("%") == s:SrcExpl_pluginCaption
+    if bufname("%") == s:SrcExpl_bufName
         " No such definition
         if s:SrcExpl_status == 0
             return -2
@@ -320,10 +377,10 @@ function! g:SrcExpl_Jump()
     endif
 
     if g:SrcExpl_searchLocalDef != 0
-        " We have already jumped to the main editor window
+        " We have already jumped to the edit window
         let s:SrcExpl_isJumped = 1
     endif
-    " Indeed go back to the main editor window
+    " Indeed go back to the edit window
     silent! exe s:SrcExpl_editWin . "wincmd w"
     " Set the mark for recording the current position
     call <SID>SrcExpl_SetMarkList()
@@ -337,7 +394,7 @@ function! g:SrcExpl_Jump()
         return 0
     endif
 
-    " Open the buffer using main editor window
+    " Open the buffer using edit window
     exe "edit " . s:SrcExpl_currMark[0]
     " Jump to the context line of that symbol
     call cursor(s:SrcExpl_currMark[1], s:SrcExpl_currMark[2])
@@ -371,8 +428,8 @@ function! g:SrcExpl_Refresh()
         return -1
     endif
 
-    " If or not the cursor is on the main editor window
-    if &previewwindow || <SID>SrcExpl_AdaptPlugins()
+    " If the cursor is not in the edit window
+    if <SID>SrcExpl_WinActive() || <SID>SrcExpl_AdaptPlugins()
         return -2
     endif
 
@@ -382,7 +439,7 @@ function! g:SrcExpl_Refresh()
         return -3
     endif
 
-    " Get the ID of main editor window
+    " Get the edit window number
     let s:SrcExpl_editWin = winnr()
 
     " Get the symbol under the cursor
@@ -406,49 +463,164 @@ function! g:SrcExpl_Refresh()
 
 endfunction " }}}
 
-" SrcExpl_AdaptPlugins() {{{
+" SrcExpl_Debug() {{{
 
-" The Source Explorer window will not work when the cursor on the
+" Log the supplied debug information along with the time
 
-" window of other plugins, such as 'Taglist', 'NERD tree' etc.
+function! <SID>SrcExpl_Debug(log)
 
-function! <SID>SrcExpl_AdaptPlugins()
-
-    " Traversal the list of other plugins
-    for item in g:SrcExpl_pluginList
-        " If they acted as a split window
-        if bufname("%") ==# item
-            " Just avoid this operation
-            return -1
+    " Debug switch is on
+    if s:SrcExpl_isDebug == 1
+        " Log file path is valid
+        if s:SrcExpl_logPath != ''
+            " Output to the log file
+            exe "redir >> " . s:SrcExpl_logPath
+            " Add the current time
+            silent echon strftime("%H:%M:%S") . ": " . a:log . "\r\n"
+            redir END
         endif
-    endfor
+    endif
 
-    " Safe
+endfunction " }}}
+
+" SrcExpl_WinGo() {{{
+
+" Goes to the Source Explorer window
+
+function! <SID>SrcExpl_WinGo()
+
+    let srcexpl_win = g:SrcExpl_GetWin()
+    if srcexpl_win == -1
+        let srcexpl_win = bufwinnr(s:SrcExpl_bufName)
+        if srcexpl_win == -1
+            return 0
+        endif
+    endif
+
+    exe 'silent! ' . srcexpl_win . 'wincmd w'
+
+    return 1
+
+endfunction " }}}
+
+" SrcExpl_WinNew() {{{
+
+" Opens the Source Explorer window
+function! <SID>SrcExpl_WinNew(wincmd)
+
+    let srcexpl_win = g:SrcExpl_GetWin()
+    if srcexpl_win != -1
+        return 0
+    endif
+
+    exe 'silent! botright ' . string(g:SrcExpl_winHeight) . 'split ' . a:wincmd
+    let srcexpl_win = winnr("$")
+    call setwinvar(srcexpl_win, s:SrcExpl_winName, 1)
+    let s:SrcExpl_Window = srcexpl_win
+    " Keep the height of Source Explorer window although it could be resized
+    exe 'set winfixheight'
+    return 1
+
+endfunction "  }}}
+
+" SrcExpl_WinEdit() {{{
+
+" Edits the Source Explorer window
+
+function! <SID>SrcExpl_WinEdit(wincmd)
+
+    if <SID>SrcExpl_WinGo() == 0
+       call <SID>SrcExpl_WinNew(a:wincmd)
+    endif
+
+    exe 'silent! edit ' . a:wincmd
+    return 1
+
+endfunction " }}}
+
+" SrcExpl_WinActive() {{{
+
+" Returns if on the Source Explorer window
+
+function! <SID>SrcExpl_WinActive()
+
+    if getwinvar(0, s:SrcExpl_winName) == 1
+        return 1
+    endif
     return 0
 
 endfunction " }}}
 
-" SrcExpl_ReportErr() {{{
+" SrcExpl_WinDelete() {{{
 
-" Output the message when we get an error situation
+" Closes the Source Explorer window
 
-function! <SID>SrcExpl_ReportErr(err)
+function! <SID>SrcExpl_WinDelete()
 
-    " Highlight the error prompt
-    echohl ErrorMsg
-        echo "SrcExpl: " . a:err
-    echohl None
+    if <SID>SrcExpl_WinGo() == 0
+        return 0
+    endif
+
+    exe 'silent! close'
+    return 1
 
 endfunction " }}}
 
-" SrcExpl_EnterWin() {{{
+" SrcExpl_WinPrompt() {{{
+
+" Tell users there is no tag found in their PATH
+
+function! <SID>SrcExpl_WinPrompt(prompt)
+
+    " Do the Source Explorer existed already?
+    let l:bufnum = bufnr(s:SrcExpl_bufName)
+    " Not existed, create a new buffer
+    if l:bufnum == -1
+        " Create a new buffer
+        let l:wcmd = s:SrcExpl_bufName
+    else
+        " Edit the existing buffer
+        let l:wcmd = '+buffer' . l:bufnum
+    endif
+
+    " Reopen the Source Explorer idle window
+    call <SID>SrcExpl_WinEdit(l:wcmd)
+    " Done
+    if <SID>SrcExpl_WinActive()
+        " First make it modifiable
+        setlocal modifiable
+        " Not show its name on the buffer list
+        setlocal nobuflisted
+        " No exact file
+        setlocal buftype=nofile
+        " Report the reason why the Source Explorer
+        " can not point to the definition
+        " Delete all lines in buffer.
+        1,$d _
+        " Go to the end of the buffer put the buffer list
+        $
+        " Display the version of the Source Explorer
+        put! = a:prompt
+        " Cancel all the highlighted words
+        match none
+        " Delete the extra trailing blank line
+        $ d _
+        " Make it unmodifiable again
+        setlocal nomodifiable
+        " Go back to the edit window
+        silent! exe s:SrcExpl_editWin . "wincmd w"
+    endif
+
+endfunction " }}}
+
+" SrcExpl_WinEnter() {{{
 
 " Operation when 'WinEnter' event happens
 
-function! <SID>SrcExpl_EnterWin()
+function! <SID>SrcExpl_WinEnter()
 
     " In the Source Explorer window
-    if &previewwindow
+    if <SID>SrcExpl_WinActive()
         if has("gui_running")
             " Delete the SrcExplGoBack item in Popup menu
             silent! nunmenu 1.01 PopUp.&SrcExplGoBack
@@ -489,7 +661,7 @@ function! <SID>SrcExpl_EnterWin()
             \ ":call g:SrcExpl_Jump()<CR>"
             exe "nunmap " . g:SrcExpl_jumpKey
         endif
-    " In the main editor window
+    " In the edit window
     else
         if has("gui_running")
             " You can use SrcExplGoBack item in Popup menu
@@ -513,6 +685,69 @@ function! <SID>SrcExpl_EnterWin()
             exe "nunmap " . g:SrcExpl_jumpKey
         endif
     endif
+
+endfunction " }}}
+
+" SrcExpl_WinClose() {{{
+
+" Close the Source Explorer window
+
+function! <SID>SrcExpl_WinClose()
+
+    call <SID>SrcExpl_WinDelete()
+
+endfunction " }}}
+
+" SrcExpl_WinOpen() {{{
+
+" Open the Source Explorer window under the bottom of Vim,
+" and set the buffer's attribute of the Source Explorer
+
+function! <SID>SrcExpl_WinOpen()
+
+    " Get the edit window number
+    let s:SrcExpl_editWin = winnr()
+
+    " Get the tab page number
+    let s:SrcExpl_tabPage = tabpagenr()
+
+    " Prompt the plugin name and its version
+    call <SID>SrcExpl_WinPrompt(s:SrcExpl_pluginName . ' v' . string(s:SrcExpl_pluginVer))
+
+endfunction " }}}
+
+" SrcExpl_AdaptPlugins() {{{
+
+" The Source Explorer window will not work when the cursor on the
+
+" window of other plugins, such as 'Taglist', 'NERD tree' etc.
+
+function! <SID>SrcExpl_AdaptPlugins()
+
+    " Traversal the list of other plugins
+    for item in g:SrcExpl_pluginList
+        " If they acted as a split window
+        if bufname("%") ==# item
+            " Just avoid this operation
+            return -1
+        endif
+    endfor
+
+    " Safe
+    return 0
+
+endfunction " }}}
+
+" SrcExpl_ReportErr() {{{
+
+" Output the message when we get an error situation
+
+function! <SID>SrcExpl_ReportErr(err)
+
+    " Highlight the error prompt
+    echohl ErrorMsg
+        echo "SrcExpl: " . a:err
+    echohl None
 
 endfunction " }}}
 
@@ -549,7 +784,7 @@ function! <SID>SrcExpl_GetMarkList()
         return <SID>SrcExpl_GetMarkList()
     endif
 
-    " Load the buffer content into the main editor window
+    " Load the buffer content into the edit window
     exe "edit " . get(g:SrcExpl_markList, -1)[0]
     " Jump to the context position of that symbol
     call cursor(get(g:SrcExpl_markList, -1)[1], get(g:SrcExpl_markList, -1)[2])
@@ -572,8 +807,8 @@ function! <SID>SrcExpl_SelToJump()
     let l:expr  = ""
 
     " If or not in the Source Explorer window
-    if !&previewwindow
-        silent! wincmd P
+    if !<SID>SrcExpl_WinActive()
+        call <SID>SrcExpl_WinGo()
     endif
 
     " Get the item data that the user selected just now
@@ -609,7 +844,7 @@ function! <SID>SrcExpl_SelToJump()
         let l:index += 1
     endwhile
 
-    " Indeed go back to the main editor window
+    " Indeed go back to the edit window
     silent! exe s:SrcExpl_editWin . "wincmd w"
     " Open the file containing the definition context
     exe "edit " . l:fpath
@@ -665,67 +900,18 @@ function! <SID>SrcExpl_MatchExpr()
 
 endfunction " }}}
 
-" SrcExpl_PromptNoDef() {{{
-
-" Tell users there is no tag that be found in your PATH
-
-function! <SID>SrcExpl_PromptNoDef()
-
-    " Do the Source Explorer existed already?
-    let l:bufnum = bufnr(s:SrcExpl_pluginCaption)
-    " Not existed, create a new buffer
-    if l:bufnum == -1
-        " Create a new buffer
-        let l:wcmd = s:SrcExpl_pluginCaption
-    else
-        " Edit the existing buffer
-        let l:wcmd = '+buffer' . l:bufnum
-    endif
-
-    " Reopen the Source Explorer idle window
-    exe "silent " . "pedit " . l:wcmd
-    " Move to it
-    silent! wincmd P
-    " Done
-    if &previewwindow
-        " First make it modifiable
-        setlocal modifiable
-        " Not show its name on the buffer list
-        setlocal nobuflisted
-        " No exact file
-        setlocal buftype=nofile
-        " Report the reason why the Source Explorer
-        " can not point to the definition
-        " Delete all lines in buffer.
-        1,$d _
-        " Go to the end of the buffer put the buffer list
-        $
-        " Display the version of the Source Explorer
-        put! ='Definition Not Found'
-        " Cancel all the highlighted words
-        match none
-        " Delete the extra trailing blank line
-        $ d _
-        " Make it unmodifiable again
-        setlocal nomodifiable
-        " Go back to the main editor window
-        silent! exe s:SrcExpl_editWin . "wincmd w"
-    endif
-
-endfunction " }}}
-
 " SrcExpl_ListMultiDefs() {{{
 
-" List multiple definitions into the preview window
+" List multiple definitions into the Source Explorer active window
 
 function! <SID>SrcExpl_ListMultiDefs(list, len)
 
     " The Source Explorer existed already ?
-    let l:bufnum = bufnr(s:SrcExpl_pluginCaption)
+    let l:bufnum = bufnr(s:SrcExpl_bufName)
     " Not existed, create a new buffer
     if l:bufnum == -1
         " Create a new buffer
-        let l:wcmd = s:SrcExpl_pluginCaption
+        let l:wcmd = s:SrcExpl_bufName
     else
         " Edit the existing buffer
         let l:wcmd = '+buffer' . l:bufnum
@@ -747,11 +933,9 @@ function! <SID>SrcExpl_ListMultiDefs(list, len)
     endif
 
     " Reopen the Source Explorer idle window
-    exe "silent " . "pedit " . l:wcmd
-    " Move to it
-    silent! wincmd P
+    call <SID>SrcExpl_WinEdit(l:wcmd)
     " Done
-    if &previewwindow
+    if <SID>SrcExpl_WinActive()
         " Reset the attribute of the Source Explorer
         setlocal modifiable
         " Not show its name on the buffer list
@@ -806,14 +990,14 @@ function! <SID>SrcExpl_ListMultiDefs(list, len)
     exe "normal! " . "gg"
     " Back to the first line
     setlocal nomodifiable
-    " Go back to the main editor window
+    " Go back to the edit window
     silent! exe s:SrcExpl_editWin . "wincmd w"
 
 endfunction " }}}
 
 " SrcExpl_ViewOneDef() {{{
 
-" Display the definition of the symbol into the preview window
+" Display the definition of the symbol into the Source Explorer active window
 
 function! <SID>SrcExpl_ViewOneDef(fpath, excmd)
 
@@ -822,16 +1006,14 @@ function! <SID>SrcExpl_ViewOneDef(fpath, excmd)
     " The tags file is in the current directory and it
     " should be generated by 'ctags --sort=foldcase -R .'
     if tagfiles()[0] ==# "tags" && a:fpath[0] == '.'
-        exe "silent " . "pedit " . expand('%:p:h') . '/' . a:fpath
+        call <SID>SrcExpl_WinEdit(expand('%:p:h') . '/' . a:fpath)
     " Up to other directories
     else
-        exe "silent " . "pedit " . a:fpath
+        call <SID>SrcExpl_WinEdit(a:fpath)
     endif
 
-    " Go to the Source Explorer window
-    silent! wincmd P
-    " Indeed back to the preview window
-    if &previewwindow
+    " Indeed back to the Source Explorer active window
+    if <SID>SrcExpl_WinActive()
         " Modify the EX Command to locate the tag exactly
         let l:expr = substitute(a:excmd, '/^', '/^\\C', 'g')
         let l:expr = substitute(l:expr,  '\*',  '\\\*', 'g')
@@ -851,12 +1033,12 @@ function! <SID>SrcExpl_ViewOneDef(fpath, excmd)
         " Because execute EX command will active a search event
         let l:hlsearch = &hlsearch
         set nohlsearch
-        " Refresh the screen
+        " Refresh all the screen
         redraw
         " Resotre the original setting for the highlight
         let &hlsearch = l:hlsearch
 
-        " Go back to the main editor window
+        " Go back to the edit window
         silent! exe s:SrcExpl_editWin . "wincmd w"
     endif
 
@@ -876,6 +1058,9 @@ function! <SID>SrcExpl_TagSth(expr)
         let l:list = taglist(a:expr)
         " Then get the length of taglist
         let l:len = len(l:list)
+    else
+        call <SID>SrcExpl_WinPrompt(s:SrcExpl_pluginName . ' v' . string(s:SrcExpl_pluginVer))
+        return
     endif
 
     " One tag
@@ -892,12 +1077,9 @@ function! <SID>SrcExpl_TagSth(expr)
         let s:SrcExpl_status = 2
     " No tag
     else
-        " Ignore the repetitious situation
-        if s:SrcExpl_status > 0
-            call <SID>SrcExpl_PromptNoDef()
-            " No definition
-            let s:SrcExpl_status = 0
-        endif
+        call <SID>SrcExpl_WinPrompt('Definition Not Found')
+        " No definition
+        let s:SrcExpl_status = 0
     endif
 
 endfunction " }}}
@@ -925,11 +1107,9 @@ function! <SID>SrcExpl_GoDecl(expr)
     call cursor(l:oldline, l:oldcol)
 
     " Preview the context
-    exe "silent " . "pedit " . expand("%:p")
-    " Go to the Preview window
-    silent! wincmd P
-    " Indeed in the Preview window
-    if &previewwindow
+    call <SID>SrcExpl_WinEdit(expand("%:p"))
+    " Indeed in the Source Explorer active window
+    if <SID>SrcExpl_WinActive()
         " Go to the new cursor position
         call cursor(l:newline, l:newcol)
         " Match the symbol
@@ -940,7 +1120,7 @@ function! <SID>SrcExpl_GoDecl(expr)
         call <SID>SrcExpl_SetCurrMark()
         " Refresh all the screen
         redraw
-        " Go back to the main editor window
+        " Go back to the edit window
         silent! exe s:SrcExpl_editWin . "wincmd w"
         " We got a local definition
         let s:SrcExpl_status = 3
@@ -971,7 +1151,7 @@ function! <SID>SrcExpl_GetSymbol()
             if g:SrcExpl_searchLocalDef == 0
                 return -1
             else
-                " Do not refresh when jumping to the main editor window
+                " Do not refresh when jumping to the edit window
                 if s:SrcExpl_isJumped == 1
                     " Get the cursor line number
                     let s:SrcExpl_csrLine = line(".")
@@ -1021,19 +1201,18 @@ endfunction " }}}
 
 " SrcExpl_GetEditWin() {{{
 
-" Get the main editor window index
+" Get the edit window number
 
 function! <SID>SrcExpl_GetEditWin()
 
     let l:i = 1
     let l:j = 1
 
-    " Loop for searching the main editor window
+    " Loop for searching the edit window
     while 1
         " Traverse the plugin list for each sub-window
         for item in g:SrcExpl_pluginList
             if bufname(winbufnr(l:i)) ==# item
-                \ || getwinvar(l:i, '&previewwindow')
                 break
             else
                 let l:j += 1
@@ -1051,71 +1230,6 @@ function! <SID>SrcExpl_GetEditWin()
             return -1
         endif
     endwhile
-
-endfunction " }}}
-
-" SrcExpl_CloseWin() {{{
-
-" Close the Source Explorer window
-
-function! <SID>SrcExpl_CloseWin()
-
-    " Just close the preview window
-    pclose
-
-endfunction " }}}
-
-" SrcExpl_OpenWin() {{{
-
-" Open the Source Explorer window under the bottom of (G)Vim,
-" and set the buffer's attribute of the Source Explorer
-
-function! <SID>SrcExpl_OpenWin()
-
-    " Get the ID of main editor window
-    let s:SrcExpl_editWin = winnr()
-    " Get the tab page number
-    let s:SrcExpl_tabPage = tabpagenr()
-
-    " Has the Source Explorer existed already?
-    let l:bufnum = bufnr(s:SrcExpl_pluginCaption)
-    " Not existed, create a new buffer
-    if l:bufnum == -1
-        " Create a new buffer
-        let l:wcmd = s:SrcExpl_pluginCaption
-    else
-        " Edit the existing buffer
-        let l:wcmd = '+buffer' . l:bufnum
-    endif
-
-    " Reopen the Source Explorer idle window
-    exe "silent " . "pedit " . l:wcmd
-    " Jump to the Source Explorer
-    silent! wincmd P
-    " Open successfully and jump to it indeed
-    if &previewwindow
-        " First make it modifiable
-        setlocal modifiable
-        " Not show its name on the buffer list
-        setlocal nobuflisted
-        " No exact file
-        setlocal buftype=nofile
-        " Delete all lines in buffer
-        1,$d _
-        " Go to the end of the buffer
-        $
-        " Display the version of the Source Explorer
-        put! = 'Source Explorer v4.5'
-        " Delete the extra trailing blank line
-        $ d _
-        " Make it no modifiable
-        setlocal nomodifiable
-        " Put it on the bottom of (G)Vim
-        silent! wincmd J
-    endif
-
-    " Indeed go back to the main editor window
-    silent! exe s:SrcExpl_editWin . "wincmd w"
 
 endfunction " }}}
 
@@ -1173,11 +1287,11 @@ function! <SID>SrcExpl_Init()
         let s:SrcExpl_isWinOS = 0
     endif
 
-    " Have we jumped to the main editor window ?
+    " Have we jumped to the edit window ?
     let s:SrcExpl_isJumped = 0
     " Line number of the current cursor
     let s:SrcExpl_csrLine = 0
-    " The ID of main editor window
+    " The ID of edit window
     let s:SrcExpl_editWin = 0
     " The tab page number
     let s:SrcExpl_tabPage = 0
@@ -1196,8 +1310,6 @@ function! <SID>SrcExpl_Init()
     exe "set autochdir"
     " Let Vim find the possible tags file
     exe "set tags=tags;"
-    " First set the height of preview window
-    exe "set previewheight=" . string(g:SrcExpl_winHeight)
     " Set the actual update time according to user's requirement
     " 100 milliseconds by default
     exe "set updatetime=" . string(g:SrcExpl_refreshTime)
@@ -1210,12 +1322,12 @@ function! <SID>SrcExpl_Init()
         exe "set foldlevelstart=" . "99"
     endif
 
-    " We must get the ID of main editor window
+    " We must get the edit window number
     let l:tmp = <SID>SrcExpl_GetEditWin()
     " Not found
     if l:tmp < 0
-        " Can not find the main editor window
-        call <SID>SrcExpl_ReportErr("Can not Found the editor window")
+        " Can not find the edit window
+        call <SID>SrcExpl_ReportErr("Can not Found the edit window")
         return -1
     endif
     " Jump to that
@@ -1237,7 +1349,7 @@ function! <SID>SrcExpl_Init()
     augroup SrcExpl_AutoCmd
         autocmd!
         au! CursorHold * nested call g:SrcExpl_Refresh()
-        au! WinEnter * nested call <SID>SrcExpl_EnterWin()
+        au! WinEnter * nested call <SID>SrcExpl_WinEnter()
     augroup end
 
     return 0
@@ -1257,7 +1369,7 @@ function! <SID>SrcExpl_Toggle()
             return -1
         endif
         " Create the window
-        call <SID>SrcExpl_OpenWin()
+        call <SID>SrcExpl_WinOpen()
         " We change the flag to true
         let s:SrcExpl_isRunning = 1
     else
@@ -1266,10 +1378,8 @@ function! <SID>SrcExpl_Toggle()
             call <SID>SrcExpl_ReportErr("Not support multiple tab pages")
             return -2
         endif
-        " Set the switch flag off
-        let s:SrcExpl_isOpen = 0
         " Close the window
-        call <SID>SrcExpl_CloseWin()
+        call <SID>SrcExpl_WinClose()
         " Do the cleaning work
         call <SID>SrcExpl_CleanUp()
         " We change the flag to false
@@ -1294,7 +1404,7 @@ function! <SID>SrcExpl_Close()
             return -1
         endif
         " Close the window
-        call <SID>SrcExpl_CloseWin()
+        call <SID>SrcExpl_WinClose()
         " Do the cleaning work
         call <SID>SrcExpl_CleanUp()
         " We change the flag to false
@@ -1322,7 +1432,7 @@ function! <SID>SrcExpl()
             return -1
         endif
         " Create the window
-        call <SID>SrcExpl_OpenWin()
+        call <SID>SrcExpl_WinOpen()
         " We change the flag to true
         let s:SrcExpl_isRunning = 1
     else

@@ -1,5 +1,11 @@
 This is a mirror of http://www.vim.org/scripts/script.php?script_id=2179
 
+[GitHub]
+
+The latest dev version of Source Explorer and screenshots can be downloaded from GitHub Homepage:
+
+https://github.com/wesleyche/SrcExpl
+
 [Introduction]
 
 The plugin (srcexpl.vim) is a source code explorer based on tags and it provides an overview of the function and type definitions.It has such a mechannism that works like the context window component of "Source Insight" software.
@@ -68,4 +74,3 @@ b\ As soon as the definition of the word is displayed on the preview window, we 
 c\ Type the SrcExpl_jumpKey(<ENTER> as default) to jump to the exact context of its definition.
 d\ Type the SrcExpl_gobackKey(<SPACE> as default) to go back to the previous position of the symbol word.
 
-There are some screenshots on the website: http://srcexpl.blogspot.com/
